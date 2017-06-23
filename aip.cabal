@@ -26,7 +26,7 @@ library
                     Haskell2010
 
   build-depends:
-                    base >= 4.8 && <= 6
+                    base >= 4.8 && < 5
                     , HTTP
                     , network-uri
                     , tagsoup
