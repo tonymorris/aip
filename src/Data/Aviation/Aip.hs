@@ -98,6 +98,49 @@ traverseAip t =
               return (AipElement x (AipTag tx h))
         _ ->
           []
-  
 
--- [TagBranch "a" [("href","aip.asp?pg=20&vdate=25-May-2017&ver=1")] [TagLeaf (TagText "AIP Book")],TagLeaf (TagText " (25-May-2017)")]
+aipHrefRequest ::
+  AipHref
+  -> Request String
+aipHrefRequest (AipHref p1 p2 d1 d2 m1 m2 m3 y1 y2 y3 y4 v) = 
+  let q =
+        concat [
+          "?pg="
+        , [p1]
+        , [p2]
+        , "&vdate="
+        , [d1]
+        , [d2]
+        , "-"
+        , [m1]
+        , [m2]
+        , [m3]
+        , "-"
+        , [y1]
+        , [y2]
+        , [y3]
+        , [y4]
+        , "&ver="
+        , [v]
+        ]
+      uri =
+        URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) "/aip/aip.asp" q ""
+      headers =
+        [
+        ]
+  in  setRequestBody (setHeaders (mkRequest POST uri) headers) ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
+
+aipHrefTree ::
+  AipHref
+  -> ExceptT ConnError IO [TagTree String]
+aipHrefTree h =
+   ExceptT ((parseTree . rspBody <$>) <$> simpleHTTP (aipHrefRequest h))
+
+aipHrefTreePos ::
+  AipHref
+  -> ExceptT ConnError IO (TagTreePos String)
+aipHrefTreePos h =
+  fromTagTree . htmlRoot <$> aipHrefTree h
+
+-- TagBranch "li" [] [TagBranch "a" [("href","current/aip/complete.pdf")] [TagLeaf (TagText "Complete")]]
+-- AIP book, each <li>, also index.pdf which is commented out
