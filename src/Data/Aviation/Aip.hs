@@ -66,8 +66,6 @@ data AipElement =
     AipTag
   deriving (Eq, Ord, Show)
 
--- traverseTree :: Monoid m => (TagTreePos str -> m) -> TagTreePos str -> m 
-
 traverseAip ::
   TagTreePos String
   -> [AipElement]
@@ -142,6 +140,8 @@ aipHrefTreePos ::
 aipHrefTreePos h =
   fromTagTree . htmlRoot <$> aipHrefTree h
 
+---- AIP Book
+
 data AipBookElements =
   AipBookElements
     String -- href
@@ -168,5 +168,39 @@ traverseAipBook t =
     _ ->
       []
 
-testhref =
+---- AIP Charts
+
+data AipChartElements =
+  AipChartElements
+    String -- href
+    String -- name
+  deriving (Eq, Ord, Show)
+
+traverseAipCharts ::
+  TagTreePos [Char] -> [AipChartElements]
+traverseAipCharts t =
+  case t of
+    TagTreePos
+      (TagBranch "li" [] [TagBranch "a" [("href", h)] [TagLeaf (TagText x)]])
+      _
+      _
+      _ ->
+      [AipChartElements h x]
+    _ ->
+      []
+
+---- AIP Chart Sections
+
+---- test values
+
+-- aip.asp?pg=60&vdate=25-May-2017&sect=ERCHigh&ver=1
+
+testBookHref :: 
+  AipHref
+testBookHref =
   AipHref '2' '0' '2' '5' 'M' 'a' 'y' '2' '0' '1' '7' '1'
+
+testChartsHref ::
+  AipHref
+testChartsHref =
+  AipHref '6' '0' '2' '5' 'M' 'a' 'y' '2' '0' '1' '7' '1'
