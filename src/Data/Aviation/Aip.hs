@@ -142,5 +142,31 @@ aipHrefTreePos ::
 aipHrefTreePos h =
   fromTagTree . htmlRoot <$> aipHrefTree h
 
--- TagBranch "li" [] [TagBranch "a" [("href","current/aip/complete.pdf")] [TagLeaf (TagText "Complete")]]
--- AIP book, each <li>, also index.pdf which is commented out
+data AipBookElements =
+  AipBookElements
+    String -- href
+    String -- name
+  deriving (Eq, Ord, Show)
+
+traverseAipBook ::
+  TagTreePos String
+  -> [AipBookElements]
+traverseAipBook t =
+  case t of
+    TagTreePos
+      (TagBranch "li" [] [TagBranch "a" [("href", h)] [TagLeaf (TagText x)]])
+      _
+      _
+      _ ->
+      [AipBookElements h x]
+    TagTreePos
+      (TagLeaf (TagComment "<li><a href=\"current/aip/index.pdf\">Index</a></li>"))
+      _
+      _
+      _ ->
+      [AipBookElements "current/aip/index.pdf" "Index"]
+    _ ->
+      []
+
+testhref =
+  AipHref '2' '0' '2' '5' 'M' 'a' 'y' '2' '0' '1' '7' '1'
