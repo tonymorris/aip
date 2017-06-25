@@ -11,6 +11,27 @@ import Text.HTML.TagSoup.Tree.Util
 import Text.HTML.TagSoup.Tree.Zipper
 import Control.Monad.Trans.Except
 
+
+aipRequest ::
+  String
+  -> Request String
+aipRequest s = 
+  mkRequest GET (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) "" "")
+
+aipRequestTree ::
+  String
+  -> ExceptT ConnError IO [TagTree String]
+aipRequestTree s =
+   ExceptT ((parseTree . rspBody <$>) <$> simpleHTTP (aipRequest s))
+
+aipRequestTreePos ::
+  String
+  -> ExceptT ConnError IO (TagTreePos String)
+aipRequestTreePos s =
+  fromTagTree . htmlRoot <$> aipRequestTree s
+
+---
+
 request ::
   Request String
 request = 
@@ -177,7 +198,8 @@ data AipChartElements =
   deriving (Eq, Ord, Show)
 
 traverseAipCharts ::
-  TagTreePos [Char] -> [AipChartElements]
+  TagTreePos [Char]
+  -> [AipChartElements]
 traverseAipCharts t =
   case t of
     TagTreePos
@@ -191,6 +213,11 @@ traverseAipCharts t =
 
 ---- AIP Chart Sections
 
+-- runExceptT $ traverseTree traverseAipCharts  <$> aipRequestTreePos "aip.asp?pg=60&vdate=25-May-2017&sect=ERCHigh&ver=1"
+
+-- AIP ERSA
+
+  
 ---- test values
 
 -- aip.asp?pg=60&vdate=25-May-2017&sect=ERCHigh&ver=1
