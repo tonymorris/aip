@@ -34,20 +34,83 @@ aipTreePos ::
 aipTreePos =
   fromTagTree . htmlRoot <$> aipTree
 
+aipTreeTraversal ::
+  TagTreePos String
+  -> Aip
+aipTreeTraversal t =
+  case t of
+    TagTreePos
+      (TagBranch "a" [("href", href)] [TagLeaf (TagText n)])
+      _
+      [TagLeaf (TagText tx)]
+      _ ->
+        {-
+        maybeToList $ 
+          aipHref href >>= \h -> 
+          aipType n    >>= \x ->
+          return (AipElement x (AipTag tx h))
+        -}
+        mempty
+    _ ->
+      mempty -- []
+
+getAipTree ::
+  ExceptT ConnError IO Aip
+getAipTree =
+  traverseTree aipTreeTraversal <$> aipTreePos
+  
 ----
+
+data Link =
+  Link
+    String
+  deriving (Eq, Ord, Show)
 
 data Aip =
   Aip
     AipBooks
+    AipCharts
+    -- etc
   deriving (Eq, Ord, Show)
 
+instance Monoid Aip where
+  Aip a1 a2 `mappend` Aip b1 b2 =
+    Aip (a1 `mappend` b1) (a2 `mappend` b2)
+  mempty =
+    Aip mempty mempty
+    
 data AipBooks =
   AipBooks
     [AipBook]
   deriving (Eq, Ord, Show)
 
+instance Monoid AipBooks where
+  AipBooks x `mappend` AipBooks y =
+    AipBooks (x `mappend` y)
+  mempty =
+    AipBooks mempty
+
 data AipBook =
   AipBook
+    AipDate
+    Link
+  deriving (Eq, Ord, Show)
+
+data AipCharts =
+  AipCharts
+    [AipChart]
+  deriving (Eq, Ord, Show)
+
+instance Monoid AipCharts where
+  AipCharts x `mappend` AipCharts y =
+    AipCharts (x `mappend` y)
+  mempty =
+    AipCharts mempty
+    
+data AipChart =
+  AipChart
+    AipDate
+    Link
   deriving (Eq, Ord, Show)
 
 ----
