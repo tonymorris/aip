@@ -1,9 +1,12 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Data.Aviation.Aip2 where
 
 import Control.Applicative
+import Control.Lens
 import Data.Digit
 import Data.Maybe
-import Network.Stream
+import Network.Stream hiding (Stream)
 import Network.HTTP
 import Network.URI
 import Prelude
@@ -11,6 +14,7 @@ import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.HTML.TagSoup.Tree.Util
 import Text.HTML.TagSoup.Tree.Zipper
+import Text.Parsec(Parsec, Stream, parse)
 import Text.Parser.Char
 import Text.Parser.Combinators
 import Control.Monad.Trans.Except
@@ -50,7 +54,8 @@ aipTreeTraversal t =
           aipType n    >>= \x ->
           return (AipElement x (AipTag tx h))
         -}
-        mempty
+        let k = runParse parseAipHref href
+        in  mempty
     _ ->
       mempty -- []
 
@@ -58,7 +63,7 @@ getAipTree ::
   ExceptT ConnError IO Aip
 getAipTree =
   traverseTree aipTreeTraversal <$> aipTreePos
-  
+
 ----
 
 data Link =
@@ -214,3 +219,11 @@ parseAipHref ::
 parseAipHref =
   string "aip.asp?pg=" *> 
   (AipHref <$> parseAipPg <* string "&vdate=" <*> parseAipDate <* string "&ver=" <*> parsedigit)
+
+runParse ::
+  Stream s Identity t =>
+  Parsec s () a
+  -> s
+  -> Maybe a
+runParse p s =
+  parse p "aip" s ^? _Right

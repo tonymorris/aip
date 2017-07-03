@@ -35,6 +35,7 @@ library
                     , parsers
                     , parsec
                     , digit
+                    , lens
                     
   ghc-options:
                     -Wall
