@@ -32,6 +32,9 @@ library
                     , tagsoup
                     , tagsoup-selection
                     , transformers
+                    , parsers
+                    , parsec
+                    , digit
                     
   ghc-options:
                     -Wall
@@ -45,6 +48,7 @@ library
 
   exposed-modules:
                     Data.Aviation.Aip
+                    Data.Aviation.Aip2
 
 test-suite doctests
   type:
