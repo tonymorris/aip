@@ -54,8 +54,34 @@ aipTreeTraversal t =
           aipType n    >>= \x ->
           return (AipElement x (AipTag tx h))
         -}
-        let k = runParse parseAipHref href
-        in  mempty
+        let k :: Maybe AipHref; k = runParse parseAipHref href
+        {-
+            aipType "AIP Book" =
+              Just Book
+            aipType "AIP Charts" =
+              Just Charts
+            aipType "Departure and Approach Procedures (DAP)" =
+              Nothing
+            aipType "En Route Supplement Australia (ERSA)" =
+              Nothing
+            aipType _ =
+              Nothing
+-}
+        in  case n of
+              "AIP Book" ->
+                case runParse parseAipHref href of
+                  Nothing ->
+                    mempty
+                  Just h ->
+                    Aip (AipBooks [AipBook h n]) mempty
+              "AIP Charts" ->
+                case runParse parseAipHref href of
+                  Nothing ->
+                    mempty
+                  Just h ->
+                    Aip mempty (AipCharts [AipChart h n])
+              _ -> 
+                mempty
     _ ->
       mempty -- []
 
@@ -97,8 +123,8 @@ instance Monoid AipBooks where
 
 data AipBook =
   AipBook
-    AipDate
-    Link
+    AipHref
+    String
   deriving (Eq, Ord, Show)
 
 data AipCharts =
@@ -114,8 +140,8 @@ instance Monoid AipCharts where
     
 data AipChart =
   AipChart
-    AipDate
-    Link
+    AipHref
+    String
   deriving (Eq, Ord, Show)
 
 ----
