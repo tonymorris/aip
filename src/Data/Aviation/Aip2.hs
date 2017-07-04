@@ -40,7 +40,7 @@ aipTreePos =
 
 aipTreeTraversal ::
   TagTreePos String
-  -> Aip
+  -> Aip () ()
 aipTreeTraversal t =
   case t of
     TagTreePos
@@ -73,20 +73,20 @@ aipTreeTraversal t =
                   Nothing ->
                     mempty
                   Just h ->
-                    Aip (AipBooks [AipBook h n]) mempty
+                    Aip (AipBooks [AipBook h n ()]) mempty
               "AIP Charts" ->
                 case runParse parseAipHref href of
                   Nothing ->
                     mempty
                   Just h ->
-                    Aip mempty (AipCharts [AipChart h n])
+                    Aip mempty (AipCharts [AipChart h n ()])
               _ -> 
                 mempty
     _ ->
       mempty -- []
 
 getAipTree ::
-  ExceptT ConnError IO Aip
+  ExceptT ConnError IO (Aip () ())
 getAipTree =
   traverseTree aipTreeTraversal <$> aipTreePos
 
@@ -97,51 +97,53 @@ data Link =
     String
   deriving (Eq, Ord, Show)
 
-data Aip =
+data Aip books charts =
   Aip
-    AipBooks
-    AipCharts
+    (AipBooks books)
+    (AipCharts charts)
     -- etc
   deriving (Eq, Ord, Show)
 
-instance Monoid Aip where
+instance Monoid (Aip books charts) where
   Aip a1 a2 `mappend` Aip b1 b2 =
     Aip (a1 `mappend` b1) (a2 `mappend` b2)
   mempty =
     Aip mempty mempty
     
-data AipBooks =
+data AipBooks a =
   AipBooks
-    [AipBook]
+    [AipBook a]
   deriving (Eq, Ord, Show)
 
-instance Monoid AipBooks where
+instance Monoid (AipBooks a) where
   AipBooks x `mappend` AipBooks y =
     AipBooks (x `mappend` y)
   mempty =
     AipBooks mempty
 
-data AipBook =
+data AipBook a =
   AipBook
     AipHref
     String
+    a
   deriving (Eq, Ord, Show)
 
-data AipCharts =
+data AipCharts a =
   AipCharts
-    [AipChart]
+    [AipChart a]
   deriving (Eq, Ord, Show)
 
-instance Monoid AipCharts where
+instance Monoid (AipCharts a) where
   AipCharts x `mappend` AipCharts y =
     AipCharts (x `mappend` y)
   mempty =
     AipCharts mempty
     
-data AipChart =
+data AipChart a =
   AipChart
     AipHref
     String
+    a
   deriving (Eq, Ord, Show)
 
 ----
