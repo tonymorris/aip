@@ -48,23 +48,23 @@ aipTreeTraversal t =
       _
       [TagLeaf (TagText tx)]
       _ ->
-        case n of
-          "AIP Book" ->
-            case runParse parseAipHref href of
-              Nothing ->
+        let pdate = do  _ <- space
+                        between (char '(') (char ')') parseAipDate
+        in  case n of
+              "AIP Book" ->
+                let p = do  h <- runParse parseAipHref href
+                            d <- runParse pdate tx
+                            pure (Aip (AipBooks [AipBook n d h ()]) mempty)
+                in  fromMaybe mempty p          
+              "AIP Charts" ->
+                let p = do  h <- runParse parseAipHref href
+                            d <- runParse pdate tx
+                            pure (Aip mempty (AipCharts [AipChart n d h ()]))
+                in  fromMaybe mempty p
+              _ -> 
                 mempty
-              Just h ->
-                Aip (AipBooks [AipBook h tx ()]) mempty
-          "AIP Charts" ->
-            case runParse parseAipHref href of
-              Nothing ->
-                mempty
-              Just h ->
-                Aip mempty (AipCharts [AipChart h tx ()])
-          _ -> 
-            mempty
     _ ->
-      mempty -- []
+      mempty
 
 getAipTree ::
   ExceptT ConnError IO (Aip () ())
@@ -104,8 +104,9 @@ instance Monoid (AipBooks a) where
 
 data AipBook a =
   AipBook
-    AipHref
     String
+    AipDate
+    AipHref
     a
   deriving (Eq, Ord, Show)
 
@@ -122,8 +123,9 @@ instance Monoid (AipCharts a) where
     
 data AipChart a =
   AipChart
-    AipHref
     String
+    AipDate
+    AipHref
     a
   deriving (Eq, Ord, Show)
 
