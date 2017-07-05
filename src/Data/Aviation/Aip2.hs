@@ -40,7 +40,7 @@ aipTreePos =
 
 aipTreeTraversal ::
   TagTreePos String
-  -> Aip () ()
+  -> Aip () () ()
 aipTreeTraversal t =
   case t of
     TagTreePos
@@ -54,12 +54,16 @@ aipTreeTraversal t =
               "AIP Book" ->
                 let p = do  h <- runParse parseAipHref href
                             d <- runParse pdate tx
-                            pure (Aip (AipBooks [AipBook n d h ()]) mempty)
+                            pure (Aip (AipBooks [AipBook n d h ()]) mempty mempty)
                 in  fromMaybe mempty p          
               "AIP Charts" ->
                 let p = do  h <- runParse parseAipHref href
                             d <- runParse pdate tx
-                            pure (Aip mempty (AipCharts [AipChart n d h ()]))
+                            pure (Aip mempty (AipCharts [AipChart n d h ()]) mempty)
+                in  fromMaybe mempty p
+              "AIP Supplements and AICs" ->
+                let p = do  h <- runParse parseAipPgHref href
+                            pure (Aip mempty mempty (AipSupplementsAICs [AipSupplementsAIC n h ()]))
                 in  fromMaybe mempty p
               _ -> 
                 mempty
@@ -67,7 +71,7 @@ aipTreeTraversal t =
       mempty
 
 getAipTree ::
-  ExceptT ConnError IO (Aip () ())
+  ExceptT ConnError IO (Aip () () ())
 getAipTree =
   traverseTree aipTreeTraversal <$> aipTreePos
 
@@ -78,19 +82,38 @@ data Link =
     String
   deriving (Eq, Ord, Show)
 
-data Aip books charts =
+data Aip books charts supplementsaics =
   Aip
     (AipBooks books)
     (AipCharts charts)
+    (AipSupplementsAICs supplementsaics)
     -- etc
   deriving (Eq, Ord, Show)
 
-instance Monoid (Aip books charts) where
-  Aip a1 a2 `mappend` Aip b1 b2 =
-    Aip (a1 `mappend` b1) (a2 `mappend` b2)
+instance Monoid (Aip books charts supplementsaics) where
+  Aip a1 a2 a3 `mappend` Aip b1 b2 b3 =
+    Aip (a1 `mappend` b1) (a2 `mappend` b2) (a3 `mappend` b3)
   mempty =
-    Aip mempty mempty
+    Aip mempty mempty mempty
     
+data AipSupplementsAICs a =
+  AipSupplementsAICs
+    [AipSupplementsAIC a]
+  deriving (Eq, Ord, Show)
+
+data AipSupplementsAIC a =
+  AipSupplementsAIC
+    String
+    AipPg
+    a
+  deriving (Eq, Ord, Show)
+
+instance Monoid (AipSupplementsAICs a) where
+  AipSupplementsAICs x `mappend` AipSupplementsAICs y =
+    AipSupplementsAICs (x `mappend` y)
+  mempty =
+    AipSupplementsAICs mempty
+
 data AipBooks a =
   AipBooks
     [AipBook a]
@@ -230,6 +253,13 @@ parseAipHref ::
 parseAipHref =
   string "aip.asp?pg=" *> 
   (AipHref <$> parseAipPg <* string "&vdate=" <*> parseAipDate <* string "&ver=" <*> parsedigit)
+
+parseAipPgHref ::
+  (CharParsing p, Monad p) =>
+  p AipPg
+parseAipPgHref =
+  string "aip.asp?pg=" *> 
+  parseAipPg
 
 runParse ::
   Stream s Identity t =>
