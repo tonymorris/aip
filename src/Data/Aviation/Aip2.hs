@@ -1,9 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Data.Aviation.Aip2 where
 
 import Control.Applicative
 import Control.Lens
+import Data.Bool
 import Data.Digit
 import Data.Maybe
 import Network.Stream hiding (Stream)
@@ -47,72 +53,161 @@ aipRequestMethod ::
 aipRequestMethod m s z =
   mkRequest m (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) z "")
 
-getAipTree ::
+----
+
+requestAipTree ::
   ExceptT ConnError IO String
-getAipTree =
+requestAipTree =
   let r = setRequestBody
             (aipRequestPost "aip.asp" "?pg=10")
             ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
   in  ExceptT ((rspBody <$>) <$> simpleHTTP r)
 
-aipTreeTraversal ::
-  TagTreePos String
-  -> Aip0
-aipTreeTraversal t =
-  case t of
-    TagTreePos (TagBranch "li" [] [TagBranch "a" [("href", href)] [TagLeaf (TagText n)]]) _ _ _ ->
-      case n of
-        "AIP Supplements and AICs" ->
-          let p = do  g <- runParse parseAipPgHref href
-                      pure (oneAipSupplementsAIC (AipSupplementsAIC n g ()))
-          in  fromMaybe mempty p
-        'S':'u':'m':'m':'a':'r':'y':' ':'o':'f':' ':'S':'U':'P':'/':'A':'I':'C':' ':'C':'u':'r':'r':'e':'n':'t':' ':r ->
-          oneAipSummarySUP_AIC (AipSummarySUP_AIC n href r ())
-        "Precision Approach Terrain Charts and Type A & Type B Obstacle Charts" ->
-          oneAipPrecisionObstacleChart (AipPrecisionObstacleChart n href ())
-        _ ->
-          mempty
-    TagTreePos (TagBranch "li" [] (TagBranch "a" [("href", href)] [TagLeaf (TagText n)]:TagLeaf (TagText tx):_)) _ _ _ ->
-      let pdate = do  _ <- space
-                      between (char '(') (char ')') parseAipDate
-      in  case n of
-            "AIP Book" ->
-              let p = do  h <- runParse parseAipHref href
-                          d <- runParse pdate tx
-                          pure (oneAipBook (AipBook n d h ()))
-              in  fromMaybe mempty p   
-            "AIP Charts" ->
-              let p = do  h <- runParse parseAipHref href
-                          d <- runParse pdate tx
-                          pure (oneAipChart (AipChart n d h ()))
-              in  fromMaybe mempty p
-            "Departure and Approach Procedures (DAP)" ->
-              let p = do  h <- runParse parseAipHref href
-                          d <- runParse pdate tx
-                          pure (oneAipDAP (AipDAP n d h ()))
-              in  fromMaybe mempty p
-            "Designated Airspace Handbook (DAH)" ->
-              oneAipDAH (AipDAH n href ())
-            "En Route Supplement Australia (ERSA)" ->
-              let p = do  h <- runParse parseAipHref href
-                          d <- runParse pdate tx
-                          pure (oneAipERSA (AipERSA n d h ()))
-              in  fromMaybe mempty p   
-            _ ->
-              mempty
-    _ ->
-      mempty
-
 aipTree ::
   String
   -> Aip0
 aipTree =
-  traverseTree aipTreeTraversal . fromTagTree . htmlRoot . parseTree
+  let aipTreeTraversal ::
+        TagTreePos String
+        -> Aip0
+      aipTreeTraversal t =
+        case t of
+          TagTreePos (TagBranch "li" [] [TagBranch "a" [("href", href)] [TagLeaf (TagText n)]]) _ _ _ ->
+            case n of
+              "AIP Supplements and AICs" ->
+                let p = do  g <- runParse parseAipPgHref href
+                            pure (oneAipSupplementsAIC (AipSupplementsAIC n g ()))
+                in  fromMaybe mempty p
+              'S':'u':'m':'m':'a':'r':'y':' ':'o':'f':' ':'S':'U':'P':'/':'A':'I':'C':' ':'C':'u':'r':'r':'e':'n':'t':' ':r ->
+                oneAipSummarySUP_AIC (AipSummarySUP_AIC n href r ())
+              "Precision Approach Terrain Charts and Type A & Type B Obstacle Charts" ->
+                oneAipPrecisionObstacleChart (AipPrecisionObstacleChart n href ())
+              _ ->
+                mempty
+          TagTreePos (TagBranch "li" [] (TagBranch "a" [("href", href)] [TagLeaf (TagText n)]:TagLeaf (TagText tx):_)) _ _ _ ->
+            let pdate = do  _ <- space
+                            between (char '(') (char ')') parseAipDate
+            in  case n of
+                  "AIP Book" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipBook (AipBook n d h ()))
+                    in  fromMaybe mempty p   
+                  "AIP Charts" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipChart (AipChart n d h ()))
+                    in  fromMaybe mempty p
+                  "Departure and Approach Procedures (DAP)" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipDAP (AipDAP n d h ()))
+                    in  fromMaybe mempty p
+                  "Designated Airspace Handbook (DAH)" ->
+                    oneAipDAH (AipDAH n href ())
+                  "En Route Supplement Australia (ERSA)" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipERSA (AipERSA n d h ()))
+                    in  fromMaybe mempty p   
+                  _ ->
+                    mempty
+          _ ->
+            mempty
+
+  in  traverseTree aipTreeTraversal . fromTagTree . htmlRoot . parseTree
+
+aipBookTree ::
+  String
+  -> Maybe AipBookTypes
+aipBookTree =
+  let aipBookTreeTraversed ::
+        TagTreePos String
+        -> Maybe AipBookTypes
+      aipBookTreeTraversed t =
+        let trav t' =   case t' of
+                          TagTreePos
+                            (
+                              TagBranch "ul" []
+                              [
+                                TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", completeHref)] [TagLeaf (TagText "Complete")]]
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", generalHref)] [TagLeaf (TagText "General")]]
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", enrouteHref)] [TagLeaf (TagText "En Route")]]
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", aerodromeHref)] [TagLeaf (TagText "Aerodrome")]]
+                              , TagLeaf (TagText _)
+                              , TagLeaf (TagComment ind)
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", coverHref)] [TagLeaf (TagText "Amendment Instructions")]]
+                              , TagLeaf (TagText _)
+                              ]
+                            )
+                            _ _ _ ->
+                              let (i, j) =
+                                    break (== '"') ind
+                                  ind' =
+                                    bool mempty (takeWhile (/= '"') . drop 1 $ j) (i == "<li><a href=")
+                              in  (([completeHref], [generalHref], [enrouteHref]), ([aerodromeHref], [ind'], [coverHref]))
+                          _ ->
+                            mempty
+        in  case traverseTree trav t of
+              (([c], [g], [e]), ([a], [i], [m])) ->
+                Just
+                  (AipBookTypes c g e a i m)
+              _ ->
+                Nothing
+  in  aipBookTreeTraversed . fromTagTree . htmlRoot . parseTree
+
+requestAipBooks ::
+  Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+  -> Aip (Request String) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+requestAipBooks (Aip (AipBooks books) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) =
+  let aipBookRequest ::
+        AipBook a
+        -> Request String
+      aipBookRequest (AipBook _ _ (AipHref (AipPg p1 p2) (AipDate (Day dy1 dy2) m (Year y1 y2 y3 y4)) v) _) = 
+        aipRequestGet
+          "aip.asp"
+          (
+            concat
+              [
+                "?pg="
+              , show p1
+              , show p2
+              , "&vdate="
+              , show dy1
+              , show dy2
+              , "-"
+              , show m
+              , "-"
+              , show y1
+              , show y2
+              , show y3
+              , show y4
+              , "&ver="
+              , show v
+              ]
+          )
+  in  Aip (AipBooks ((\b -> aipBookRequest b <$ b) <$> books)) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+
+testRequestAipBooks =
+  do  s <- requestAipTree
+      let t = aipTree s
+          u = requestAipBooks t
+      undefined
 
 testAipTree ::
   ExceptT ConnError IO Aip0
 testAipTree =
-  aipTree <$> getAipTree
+  aipTree <$> requestAipTree
+
+testAipBook ::
+  ExceptT ConnError IO String
+testAipBook =
+  ExceptT ((rspBody <$>) <$> simpleHTTP (aipRequestGet "aip.asp" "?pg=20&vdate=25-May-2017&ver=1"))
 
 ----
 
@@ -122,15 +217,24 @@ data Link =
   deriving (Eq, Ord, Show)
 
 data Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts =
-  Aip
-    (AipBooks books)
-    (AipCharts charts)
-    (AipSupplementsAICs supplementsaics)
-    (AipSummarySUP_AICs summarysupaics)
-    (AipDAPs daps)
-    (AipDAHs dahs)
-    (AipERSAs ersas)
-    (AipPrecisionObstacleCharts precisionobstaclecharts)
+  Aip {
+    _books ::
+      AipBooks books
+  , _charts ::
+      AipCharts charts
+  , _supplementsaics ::
+      AipSupplementsAICs supplementsaics
+  , _summarysupaics ::
+      AipSummarySUP_AICs summarysupaics      
+  , _daps ::
+      AipDAPs daps
+  , _dahs ::
+      AipDAHs dahs
+  , _ersas ::
+      AipERSAs ersas
+  , _precisionobstaclecharts ::
+      AipPrecisionObstacleCharts precisionobstaclecharts
+  }
   deriving (Eq, Ord, Show)
 
 type Aip0 =
@@ -211,6 +315,10 @@ data AipBooks a =
     [AipBook a]
   deriving (Eq, Ord, Show)
 
+instance Functor AipBooks where
+  fmap f (AipBooks x) =
+    AipBooks ((f <$>) <$> x)
+    
 instance Monoid (AipBooks a) where
   AipBooks x `mappend` AipBooks y =
     AipBooks (x `mappend` y)
@@ -225,11 +333,19 @@ data AipBook a =
     a
   deriving (Eq, Ord, Show)
 
+instance Functor AipBook where
+  fmap f (AipBook s d h a) =
+    AipBook s d h (f a)
+
 data AipCharts a =
   AipCharts
     [AipChart a]
   deriving (Eq, Ord, Show)
 
+instance Functor AipCharts where
+  fmap f (AipCharts x) =
+    AipCharts ((f <$>) <$> x)
+    
 instance Monoid (AipCharts a) where
   AipCharts x `mappend` AipCharts y =
     AipCharts (x `mappend` y)
@@ -244,17 +360,29 @@ data AipChart a =
     a
   deriving (Eq, Ord, Show)
 
+instance Functor AipChart where
+  fmap f (AipChart s d h a) =
+    AipChart s d h (f a)
+
 data AipSupplementsAICs a =
   AipSupplementsAICs
     [AipSupplementsAIC a]
   deriving (Eq, Ord, Show)
 
+instance Functor AipSupplementsAICs where
+  fmap f (AipSupplementsAICs x) =
+    AipSupplementsAICs ((f <$>) <$> x)
+    
 data AipSupplementsAIC a =
   AipSupplementsAIC
     String
     AipPg
     a
   deriving (Eq, Ord, Show)
+
+instance Functor AipSupplementsAIC where
+  fmap f (AipSupplementsAIC s p a) =
+    AipSupplementsAIC s p (f a)
 
 instance Monoid (AipSupplementsAICs a) where
   AipSupplementsAICs x `mappend` AipSupplementsAICs y =
@@ -275,6 +403,10 @@ data AipSummarySUP_AIC a =
     a
   deriving (Eq, Ord, Show)
 
+instance Functor AipSummarySUP_AIC where
+  fmap f (AipSummarySUP_AIC s1 s2 s3 a) =
+    AipSummarySUP_AIC s1 s2 s3 (f a)
+
 instance Monoid (AipSummarySUP_AICs a) where
   AipSummarySUP_AICs x `mappend` AipSummarySUP_AICs y =
     AipSummarySUP_AICs (x `mappend` y)
@@ -286,6 +418,10 @@ data AipDAPs a =
     [AipDAP a]
   deriving (Eq, Ord, Show)
 
+instance Functor AipDAPs where
+  fmap f (AipDAPs x) =
+    AipDAPs ((f <$>) <$> x)
+    
 instance Monoid (AipDAPs a) where
   AipDAPs x `mappend` AipDAPs y =
     AipDAPs (x `mappend` y)
@@ -300,11 +436,19 @@ data AipDAP a =
     a
   deriving (Eq, Ord, Show)
 
+instance Functor AipDAP where
+  fmap f (AipDAP s d h a) =
+    AipDAP s d h (f a)
+
 data AipDAHs a =
   AipDAHs
     [AipDAH a]
   deriving (Eq, Ord, Show)
 
+instance Functor AipDAHs where
+  fmap f (AipDAHs x) =
+    AipDAHs ((f <$>) <$> x)
+    
 data AipDAH a =
   AipDAH
     String
@@ -312,6 +456,10 @@ data AipDAH a =
     a
   deriving (Eq, Ord, Show)
 
+instance Functor AipDAH where
+  fmap f (AipDAH s1 s2 a) =
+    AipDAH s1 s2 (f a)
+    
 instance Monoid (AipDAHs a) where
   AipDAHs x `mappend` AipDAHs y =
     AipDAHs (x `mappend` y)
@@ -323,6 +471,10 @@ data AipERSAs a =
     [AipERSA a]
   deriving (Eq, Ord, Show)
 
+instance Functor AipERSAs where
+  fmap f (AipERSAs x) =
+    AipERSAs ((f <$>) <$> x)
+    
 instance Monoid (AipERSAs a) where
   AipERSAs x `mappend` AipERSAs y =
     AipERSAs (x `mappend` y)
@@ -337,11 +489,19 @@ data AipERSA a =
     a
   deriving (Eq, Ord, Show)
 
+instance Functor AipERSA where
+  fmap f (AipERSA s d h a) =
+    AipERSA s d h (f a)
+
 data AipPrecisionObstacleCharts a =
   AipPrecisionObstacleCharts
     [AipPrecisionObstacleChart a]
   deriving (Eq, Ord, Show)
 
+instance Functor AipPrecisionObstacleCharts where
+  fmap f (AipPrecisionObstacleCharts x) =
+    AipPrecisionObstacleCharts ((f <$>) <$> x)
+    
 data AipPrecisionObstacleChart a =
   AipPrecisionObstacleChart
     String
@@ -349,25 +509,31 @@ data AipPrecisionObstacleChart a =
     a
   deriving (Eq, Ord, Show)
 
+instance Functor AipPrecisionObstacleChart where
+  fmap f (AipPrecisionObstacleChart s1 s2 a) =
+    AipPrecisionObstacleChart s1 s2 (f a)
+    
 instance Monoid (AipPrecisionObstacleCharts a) where
   AipPrecisionObstacleCharts x `mappend` AipPrecisionObstacleCharts y =
     AipPrecisionObstacleCharts (x `mappend` y)
   mempty =
     AipPrecisionObstacleCharts mempty
 
-data AipBookType =
-  Complete
-  | General
-  | EnRoute
-  | Aerodrome
-  | AmendmentInstructions
-  deriving (Eq, Ord, Show)
-
-data AipBookTypeHref =
-  AipBookTypeHref
-    AipBookType
-    String
-  deriving (Eq, Ord, Show)
+data AipBookTypes =
+  AipBookTypes {
+    _bookcomplete ::
+      String
+  , _bookgeneral ::
+      String
+  , _bookenroute ::
+      String
+  , _bookaerodrome ::
+      String
+  , _bookindex ::
+      String
+  , _bookamendmentinstructions ::
+      String
+  } deriving (Eq, Ord, Show)
 
 ----
 
@@ -485,3 +651,23 @@ runParse ::
   -> Maybe a
 runParse p s =
   parse p "aip" s ^? _Right
+
+makeClassy ''Aip
+makeWrapped ''AipBooks
+makeClassy ''AipBook
+makeWrapped ''AipCharts
+makeClassy ''AipChart
+makeWrapped ''AipSupplementsAICs
+makeClassy ''AipSupplementsAIC
+makeWrapped ''AipDAPs
+makeClassy ''AipDAP
+makeWrapped ''AipDAHs
+makeClassy ''AipDAH
+makeWrapped ''AipERSAs
+makeClassy ''AipERSA
+makeWrapped ''AipPrecisionObstacleCharts
+makeClassy ''AipPrecisionObstacleChart
+makeClassy ''AipBookTypes
+makeClassy ''Day
+makeClassy ''Month
+makeClassy ''Year
