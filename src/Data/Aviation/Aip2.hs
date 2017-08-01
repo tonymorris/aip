@@ -23,31 +23,44 @@ aipRequest ::
   String
   -> Request String
 aipRequest s =
-  mkRequest GET (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) "" "")
+  aipRequestGet s ""
 
-aipTree ::
-  ExceptT ConnError IO [TagTree String]
-aipTree =
+aipRequestGet ::
+  String
+  -> String
+  -> Request String
+aipRequestGet =
+  aipRequestMethod GET
+
+aipRequestPost ::
+  String
+  -> String
+  -> Request String
+aipRequestPost =
+  aipRequestMethod POST
+
+aipRequestMethod ::
+  RequestMethod
+  -> String
+  -> String
+  -> Request String
+aipRequestMethod m s z =
+  mkRequest m (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) z "")
+
+getAipTree ::
+  ExceptT ConnError IO String
+getAipTree =
   let r = setRequestBody
-            (setHeaders (mkRequest POST (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) "/aip/aip.asp" "?pg=10" "")) [])
+            (aipRequestPost "aip.asp" "?pg=10")
             ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
-  in  ExceptT ((parseTree . rspBody <$>) <$> simpleHTTP r)
-
-aipTreePos ::
-  ExceptT ConnError IO (TagTreePos String)
-aipTreePos =
-  fromTagTree . htmlRoot <$> aipTree
+  in  ExceptT ((rspBody <$>) <$> simpleHTTP r)
 
 aipTreeTraversal ::
   TagTreePos String
-  -> Aip () () () () () () () ()
+  -> Aip0
 aipTreeTraversal t =
   case t of
     TagTreePos (TagBranch "li" [] [TagBranch "a" [("href", href)] [TagLeaf (TagText n)]]) _ _ _ ->
-      -- AIP Supplements and AICs
-      -- Summary of SUP/AIC Current 17 Aug 17
-      -- Summary of SUP/AIC Current 20 July 17
-      -- Precision Approach Terrain Charts and Type A & Type B Obstacle Charts
       case n of
         "AIP Supplements and AICs" ->
           let p = do  g <- runParse parseAipPgHref href
@@ -60,14 +73,6 @@ aipTreeTraversal t =
         _ ->
           mempty
     TagTreePos (TagBranch "li" [] (TagBranch "a" [("href", href)] [TagLeaf (TagText n)]:TagLeaf (TagText tx):_)) _ _ _ ->
-      -- AIP Book
-      -- AIP Book
-      -- AIP Charts
-      -- Departure and Approach Procedures (DAP)
-      -- Departure and Approach Procedures (DAP)
-      -- Designated Airspace Handbook (DAH)
-      -- En Route Supplement Australia (ERSA)
-      -- En Route Supplement Australia (ERSA)
       let pdate = do  _ <- space
                       between (char '(') (char ')') parseAipDate
       in  case n of
@@ -98,10 +103,16 @@ aipTreeTraversal t =
     _ ->
       mempty
 
-getAipTree ::
-  ExceptT ConnError IO (Aip () () () () () () () ())
-getAipTree =
-  traverseTree aipTreeTraversal <$> aipTreePos
+aipTree ::
+  String
+  -> Aip0
+aipTree =
+  traverseTree aipTreeTraversal . fromTagTree . htmlRoot . parseTree
+
+testAipTree ::
+  ExceptT ConnError IO Aip0
+testAipTree =
+  aipTree <$> getAipTree
 
 ----
 
@@ -121,6 +132,9 @@ data Aip books charts supplementsaics summarysupaics daps dahs ersas precisionob
     (AipERSAs ersas)
     (AipPrecisionObstacleCharts precisionobstaclecharts)
   deriving (Eq, Ord, Show)
+
+type Aip0 =
+  Aip () () () () () () () ()
 
 instance Monoid (Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) where
   Aip a1 a2 a3 a4 a5 a6 a7 a8 `mappend` Aip b1 b2 b3 b4 b5 b6 b7 b8 =
@@ -340,6 +354,20 @@ instance Monoid (AipPrecisionObstacleCharts a) where
     AipPrecisionObstacleCharts (x `mappend` y)
   mempty =
     AipPrecisionObstacleCharts mempty
+
+data AipBookType =
+  Complete
+  | General
+  | EnRoute
+  | Aerodrome
+  | AmendmentInstructions
+  deriving (Eq, Ord, Show)
+
+data AipBookTypeHref =
+  AipBookTypeHref
+    AipBookType
+    String
+  deriving (Eq, Ord, Show)
 
 ----
 
