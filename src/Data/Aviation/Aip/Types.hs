@@ -33,25 +33,3 @@ import Data.Aviation.Aip.Types.Day as A
 import Data.Aviation.Aip.Types.Link as A
 import Data.Aviation.Aip.Types.Month as A
 import Data.Aviation.Aip.Types.Year as A
-
-{-}
-makeClassy ''Aip
-makeWrapped ''AipBooks
-makeClassy ''AipBook
-makeWrapped ''AipCharts
-makeClassy ''AipChart
-makeWrapped ''AipSupplementsAICs
-makeClassy ''AipSupplementsAIC
-makeWrapped ''AipDAPs
-makeClassy ''AipDAP
-makeWrapped ''AipDAHs
-makeClassy ''AipDAH
-makeWrapped ''AipERSAs
-makeClassy ''AipERSA
-makeWrapped ''AipPrecisionObstacleCharts
-makeClassy ''AipPrecisionObstacleChart
-makeClassy ''AipBookTypes
-makeClassy ''Day
-makeClassy ''Month
-makeClassy ''Year
--}
