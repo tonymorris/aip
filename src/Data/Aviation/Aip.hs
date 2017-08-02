@@ -134,34 +134,35 @@ parseBookTree =
         TagTreePos String
         -> Maybe AipBookTypes
       aipBookTreeTraversed t =
-        let trav t' =   case t' of
-                          TagTreePos
-                            (
-                              TagBranch "ul" []
-                              [
-                                TagLeaf (TagText _)
-                              , TagBranch "li" [] [TagBranch "a" [("href", completeHref)] [TagLeaf (TagText "Complete")]]
-                              , TagLeaf (TagText _)
-                              , TagBranch "li" [] [TagBranch "a" [("href", generalHref)] [TagLeaf (TagText "General")]]
-                              , TagLeaf (TagText _)
-                              , TagBranch "li" [] [TagBranch "a" [("href", enrouteHref)] [TagLeaf (TagText "En Route")]]
-                              , TagLeaf (TagText _)
-                              , TagBranch "li" [] [TagBranch "a" [("href", aerodromeHref)] [TagLeaf (TagText "Aerodrome")]]
-                              , TagLeaf (TagText _)
-                              , TagLeaf (TagComment ind)
-                              , TagLeaf (TagText _)
-                              , TagBranch "li" [] [TagBranch "a" [("href", coverHref)] [TagLeaf (TagText "Amendment Instructions")]]
-                              , TagLeaf (TagText _)
-                              ]
-                            )
-                            _ _ _ ->
-                              let (i, j) =
-                                    break (== '"') ind
-                                  ind' =
-                                    bool mempty (takeWhile (/= '"') . drop 1 $ j) (i == "<li><a href=")
-                              in  (([completeHref], [generalHref], [enrouteHref]), ([aerodromeHref], [ind'], [coverHref]))
-                          _ ->
-                            mempty
+        let trav t' =   
+              case t' of
+                TagTreePos
+                  (
+                    TagBranch "ul" []
+                    [
+                      TagLeaf (TagText _)
+                    , TagBranch "li" [] [TagBranch "a" [("href", completeHref)] [TagLeaf (TagText "Complete")]]
+                    , TagLeaf (TagText _)
+                    , TagBranch "li" [] [TagBranch "a" [("href", generalHref)] [TagLeaf (TagText "General")]]
+                    , TagLeaf (TagText _)
+                    , TagBranch "li" [] [TagBranch "a" [("href", enrouteHref)] [TagLeaf (TagText "En Route")]]
+                    , TagLeaf (TagText _)
+                    , TagBranch "li" [] [TagBranch "a" [("href", aerodromeHref)] [TagLeaf (TagText "Aerodrome")]]
+                    , TagLeaf (TagText _)
+                    , TagLeaf (TagComment ind)
+                    , TagLeaf (TagText _)
+                    , TagBranch "li" [] [TagBranch "a" [("href", coverHref)] [TagLeaf (TagText "Amendment Instructions")]]
+                    , TagLeaf (TagText _)
+                    ]
+                  )
+                  _ _ _ ->
+                    let (i, j) =
+                          break (== '"') ind
+                        ind' =
+                          bool mempty (takeWhile (/= '"') . drop 1 $ j) (i == "<li><a href=")
+                    in  (([completeHref], [generalHref], [enrouteHref]), ([aerodromeHref], [ind'], [coverHref]))
+                _ ->
+                  mempty
         in  case traverseTree trav t of
               (([c], [g], [e]), ([a], [i], [m])) ->
                 Just
