@@ -1,5 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Data.Aviation.Aip.Types.Month where
 
+import Control.Lens
 import Prelude
 import Text.Parser.Combinators
 import Text.Parser.Char
@@ -38,3 +41,5 @@ parseMonth =
     , Nov <$ try (string "Nov")
     , Dec <$ try (string "Dec")
     ]
+
+makeClassyPrisms ''Month

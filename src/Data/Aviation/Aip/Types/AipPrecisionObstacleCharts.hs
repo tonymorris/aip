@@ -1,3 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Data.Aviation.Aip.Types.AipPrecisionObstacleCharts where
 
 import Control.Applicative
@@ -27,3 +33,5 @@ instance Monoid (AipPrecisionObstacleCharts a) where
     AipPrecisionObstacleCharts (x `mappend` y)
   mempty =
     AipPrecisionObstacleCharts mempty
+
+makeWrapped ''AipPrecisionObstacleCharts

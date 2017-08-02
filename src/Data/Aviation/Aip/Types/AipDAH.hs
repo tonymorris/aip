@@ -1,3 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Data.Aviation.Aip.Types.AipDAH where
 
 import Control.Applicative
@@ -5,10 +10,14 @@ import Control.Lens
 import Prelude
 
 data AipDAH a =
-  AipDAH
-    String
-    String
-    a
+  AipDAH {
+    _aipdahname ::
+      String
+  , _aipdahhref ::
+      String
+  , _aipdahvalue ::
+      a
+  } 
   deriving (Eq, Ord, Show)
 
 instance Functor AipDAH where
@@ -22,3 +31,5 @@ instance Foldable AipDAH where
 instance Traversable AipDAH where
   traverse f (AipDAH s1 s2 a) =
     AipDAH s1 s2 <$> f a
+
+makeClassy ''AipDAH

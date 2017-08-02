@@ -1,3 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Data.Aviation.Aip.Types.AipERSAs where
 
 import Control.Applicative
@@ -27,3 +33,5 @@ instance Monoid (AipERSAs a) where
     AipERSAs (x `mappend` y)
   mempty =
     AipERSAs mempty
+
+makeWrapped ''AipERSAs

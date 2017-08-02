@@ -1,6 +1,11 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Data.Aviation.Aip.Types.Aip where
 
--- import Control.Lens
+import Control.Lens
 import Data.Aviation.Aip.Types.AipBook
 import Data.Aviation.Aip.Types.AipBooks
 import Data.Aviation.Aip.Types.AipChart
@@ -112,3 +117,5 @@ oneAipPrecisionObstacleChart ::
   -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
 oneAipPrecisionObstacleChart precisionobstaclechart =
   Aip mempty mempty mempty mempty mempty mempty mempty (AipPrecisionObstacleCharts [precisionobstaclechart])
+
+makeClassy ''Aip

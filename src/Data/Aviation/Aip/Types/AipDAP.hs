@@ -1,3 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Data.Aviation.Aip.Types.AipDAP where
 
 import Control.Applicative
@@ -7,11 +12,16 @@ import Data.Aviation.Aip.Types.AipHref
 import Prelude
 
 data AipDAP a =
-  AipDAP
-    String
-    AipDate
-    AipHref
-    a
+  AipDAP {
+    _aipdapname ::
+      String
+  , _aipdapdate ::
+      AipDate
+  , _aipdaphref ::
+      AipHref
+  , _aipdapvalue ::
+      a
+  }
   deriving (Eq, Ord, Show)
 
 instance Functor AipDAP where
@@ -25,3 +35,5 @@ instance Foldable AipDAP where
 instance Traversable AipDAP where
   traverse f (AipDAP s d h a) =
     AipDAP s d h <$> f a
+
+makeClassy ''AipDAP

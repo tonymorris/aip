@@ -1,3 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Data.Aviation.Aip.Types.AipSupplementsAIC where
 
 import Control.Applicative
@@ -6,10 +11,14 @@ import Data.Aviation.Aip.Types.AipPg
 import Prelude
 
 data AipSupplementsAIC a =
-  AipSupplementsAIC
-    String
-    AipPg
-    a
+  AipSupplementsAIC {
+    _aipsupplementsaicname ::
+      String
+  , _aipsupplementsaicpg ::
+      AipPg
+  , _aipsupplementsaicvalue ::
+      a
+  }
   deriving (Eq, Ord, Show)
 
 instance Functor AipSupplementsAIC where
@@ -23,3 +32,5 @@ instance Foldable AipSupplementsAIC where
 instance Traversable AipSupplementsAIC where
   traverse f (AipSupplementsAIC s p a) =
     AipSupplementsAIC s p <$> f a
+
+makeClassy ''AipSupplementsAIC

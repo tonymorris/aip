@@ -1,3 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Data.Aviation.Aip.Types.AipBooks where
 
 import Control.Applicative
@@ -27,3 +33,5 @@ instance Monoid (AipBooks a) where
     AipBooks (x `mappend` y)
   mempty =
     AipBooks mempty
+
+makeWrapped ''AipBooks

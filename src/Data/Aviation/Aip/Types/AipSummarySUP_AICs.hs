@@ -1,3 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Data.Aviation.Aip.Types.AipSummarySUP_AICs where
 
 import Control.Applicative
@@ -27,3 +33,5 @@ instance Monoid (AipSummarySUP_AICs a) where
     AipSummarySUP_AICs (x `mappend` y)
   mempty =
     AipSummarySUP_AICs mempty
+
+makeWrapped ''AipSummarySUP_AICs

@@ -202,16 +202,22 @@ requestAipBooks (Aip (AipBooks books) charts supplementsaics summarysupaics daps
           )
   in  Aip (AipBooks ((\b -> aipBookRequest b <$ b) <$> books)) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
 
+-- polymorphic update lens
+bookss ::
+  Lens
+    (Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
+    (Aip bookss charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
+    (AipBooks books)
+    (AipBooks bookss)
+bookss =
+  lens
+    (\(Aip books _ _ _ _ _ _ _) -> books)
+    (\(Aip _ charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) books -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
+
 testRequestAipBooks ::
   ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
 testRequestAipBooks =
-  do  ww <- requestAipTree
-      let t = aipTree ww
-          Aip bbooks charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts = requestAipBooks t
-          ss :: ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
-          ss = (\b -> Aip (aipBookTree <$> b) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) <$> traverse doRequest bbooks
-
-      ss
+  requestAipTree >>= bookss (_Wrapped (traverse (traverse ((aipBookTree <$>) . doRequest)))) . requestAipBooks . aipTree
 
 testAipTree ::
   ExceptT ConnError IO Aip0

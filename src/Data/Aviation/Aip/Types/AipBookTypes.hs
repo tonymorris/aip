@@ -1,6 +1,11 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Data.Aviation.Aip.Types.AipBookTypes where
 
--- import Control.Lens
+import Control.Lens
 import Prelude
 
 data AipBookTypes =
@@ -18,3 +23,5 @@ data AipBookTypes =
   , _bookamendmentinstructions ::
       String
   } deriving (Eq, Ord, Show)
+
+makeClassy ''AipBookTypes

@@ -1,3 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Data.Aviation.Aip.Types.AipCharts where
 
 import Control.Applicative
@@ -27,4 +33,5 @@ instance Monoid (AipCharts a) where
     AipCharts (x `mappend` y)
   mempty =
     AipCharts mempty
-    
+
+makeWrapped ''AipCharts
