@@ -173,7 +173,7 @@ aipBookTree =
 requestAipBooks ::
   Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
   -> Aip (Request String) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-requestAipBooks (Aip (AipBooks books) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) =
+requestAipBooks (Aip (AipBooks books') charts' supplementsaics' summarysupaics' daps' dahs' ersas' precisionobstaclecharts') =
   let aipBookRequest ::
         AipBook a
         -> Request String
@@ -200,24 +200,12 @@ requestAipBooks (Aip (AipBooks books) charts supplementsaics summarysupaics daps
               , show v
               ]
           )
-  in  Aip (AipBooks ((\b -> aipBookRequest b <$ b) <$> books)) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-
--- polymorphic update lens
-bookss ::
-  Lens
-    (Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
-    (Aip bookss charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
-    (AipBooks books)
-    (AipBooks bookss)
-bookss =
-  lens
-    (\(Aip books _ _ _ _ _ _ _) -> books)
-    (\(Aip _ charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) books -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
+  in  Aip (AipBooks ((\b -> aipBookRequest b <$ b) <$> books')) charts' supplementsaics' summarysupaics' daps' dahs' ersas' precisionobstaclecharts'
 
 testRequestAipBooks ::
   ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
 testRequestAipBooks =
-  requestAipTree >>= bookss (_Wrapped (traverse (traverse ((aipBookTree <$>) . doRequest)))) . requestAipBooks . aipTree
+  requestAipTree >>= books (_Wrapped (traverse (traverse ((aipBookTree <$>) . doRequest)))) . requestAipBooks . aipTree
 
 testAipTree ::
   ExceptT ConnError IO Aip0
