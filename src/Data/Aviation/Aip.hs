@@ -64,18 +64,18 @@ doRequest r =
 
 ----
 
-requestAipTree ::
+requestAipContents ::
   ExceptT ConnError IO String
-requestAipTree =
+requestAipContents =
   let r = setRequestBody
             (aipRequestPost "aip.asp" "?pg=10")
             ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
   in  doRequest r
 
-aipTree ::
+parseAipTree ::
   String
   -> Aip0
-aipTree =
+parseAipTree =
   let aipTreeTraversal ::
         TagTreePos String
         -> Aip0
@@ -126,10 +126,10 @@ aipTree =
 
   in  traverseTree aipTreeTraversal . fromTagTree . htmlRoot . parseTree
 
-aipBookTree ::
+parseBookTree ::
   String
   -> Maybe AipBookTypes
-aipBookTree =
+parseBookTree =
   let aipBookTreeTraversed ::
         TagTreePos String
         -> Maybe AipBookTypes
@@ -170,10 +170,12 @@ aipBookTree =
                 Nothing
   in  aipBookTreeTraversed . fromTagTree . htmlRoot . parseTree
 
-requestAipBooks ::
-  Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-  -> Aip (Request String) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-requestAipBooks (Aip (AipBooks books') charts' supplementsaics' summarysupaics' daps' dahs' ersas' precisionobstaclecharts') =
+requestAipBookTree ::
+  Applicative f =>
+  (Request String -> f String)
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+  -> f (Aip (Maybe AipBookTypes) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
+requestAipBookTree f =
   let aipBookRequest ::
         AipBook a
         -> Request String
@@ -200,22 +202,12 @@ requestAipBooks (Aip (AipBooks books') charts' supplementsaics' summarysupaics' 
               , show v
               ]
           )
-  in  Aip (AipBooks ((\b -> aipBookRequest b <$ b) <$> books')) charts' supplementsaics' summarysupaics' daps' dahs' ersas' precisionobstaclecharts'
+  in  books (_Wrapped (traverse (traverse ((parseBookTree <$>) . f)))) . over (books . _Wrapped) ((\b -> aipBookRequest b <$ b) <$>)
 
 testRequestAipBooks ::
   ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
 testRequestAipBooks =
-  requestAipTree >>= books (_Wrapped (traverse (traverse ((aipBookTree <$>) . doRequest)))) . requestAipBooks . aipTree
-
-testAipTree ::
-  ExceptT ConnError IO Aip0
-testAipTree =
-  aipTree <$> requestAipTree
-
-testAipBook ::
-  ExceptT ConnError IO String
-testAipBook =
-  doRequest (aipRequestGet "aip.asp" "?pg=20&vdate=25-May-2017&ver=1")
+  requestAipContents >>= requestAipBookTree doRequest . parseAipTree
 
 runParse ::
   Stream s Identity t =>
