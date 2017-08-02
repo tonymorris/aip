@@ -42,4 +42,5 @@ parseMonth =
     , Dec <$ try (string "Dec")
     ]
 
+makeClassy ''Month
 makeClassyPrisms ''Month

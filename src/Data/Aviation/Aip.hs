@@ -179,29 +179,8 @@ requestAipBookTree f =
   let aipBookRequest ::
         AipBook a
         -> Request String
-      aipBookRequest (AipBook _ _ (AipHref (AipPg p1 p2) (AipDate (Day dy1 dy2) m (Year y1 y2 y3 y4)) v) _) = 
-        aipRequestGet
-          "aip.asp"
-          (
-            concat
-              [
-                "?pg="
-              , show p1
-              , show p2
-              , "&vdate="
-              , show dy1
-              , show dy2
-              , "-"
-              , show m
-              , "-"
-              , show y1
-              , show y2
-              , show y3
-              , show y4
-              , "&ver="
-              , show v
-              ]
-          )
+      aipBookRequest = 
+        aipRequestGet "aip.asp" . uriAipHref
   in  books (_Wrapped (traverse (traverse ((parseBookTree <$>) . f)))) . over (books . _Wrapped) ((\b -> aipBookRequest b <$ b) <$>)
 
 testRequestAipBooks ::

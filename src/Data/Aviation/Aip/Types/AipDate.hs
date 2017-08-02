@@ -30,3 +30,16 @@ parseAipDate =
   AipDate <$> parseDay <* char '-' <*> parseMonth <* char '-' <*> parseYear
 
 makeClassy ''AipDate
+
+instance HasDay AipDate where
+  day =
+    aipday . day
+    
+instance HasMonth AipDate where
+  month =
+    aipmonth . month
+
+instance HasYear AipDate where
+  year =
+    aipyear . year
+    

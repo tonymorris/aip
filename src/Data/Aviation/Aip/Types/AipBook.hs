@@ -36,3 +36,11 @@ instance Traversable AipBook where
     AipBook s d h <$> f a
 
 makeClassy ''AipBook
+
+instance HasAipDate (AipBook a) where
+  aipDate =
+    aipbookdate . aipDate
+
+instance HasAipHref (AipBook a) where
+  aipHref =
+    aipbookhref . aipHref

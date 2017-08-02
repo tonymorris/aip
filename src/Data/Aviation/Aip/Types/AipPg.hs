@@ -13,9 +13,9 @@ import Text.Parser.Char
 
 data AipPg =
   AipPg {
-    aippg1 ::
+    _aippg1 ::
       Digit
-  , aippg2 ::
+  , _aippg2 ::
       Digit
   } deriving (Eq, Ord, Show)
 
