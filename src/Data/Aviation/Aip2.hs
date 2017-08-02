@@ -24,6 +24,464 @@ import Text.Parsec(Parsec, Stream, parse)
 import Text.Parser.Char
 import Text.Parser.Combinators
 import Control.Monad.Trans.Except
+ 
+data Link =
+  Link
+    String
+  deriving (Eq, Ord, Show)
+
+data Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts =
+  Aip {
+    _books ::
+      AipBooks books
+  , _charts ::
+      AipCharts charts
+  , _supplementsaics ::
+      AipSupplementsAICs supplementsaics
+  , _summarysupaics ::
+      AipSummarySUP_AICs summarysupaics      
+  , _daps ::
+      AipDAPs daps
+  , _dahs ::
+      AipDAHs dahs
+  , _ersas ::
+      AipERSAs ersas
+  , _precisionobstaclecharts ::
+      AipPrecisionObstacleCharts precisionobstaclecharts
+  }
+  deriving (Eq, Ord, Show)
+
+type Aip0 =
+  Aip () () () () () () () ()
+
+instance Monoid (Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) where
+  Aip a1 a2 a3 a4 a5 a6 a7 a8 `mappend` Aip b1 b2 b3 b4 b5 b6 b7 b8 =
+    Aip
+      (a1 `mappend` b1)
+      (a2 `mappend` b2)
+      (a3 `mappend` b3)
+      (a4 `mappend` b4)
+      (a5 `mappend` b5)
+      (a6 `mappend` b6)
+      (a7 `mappend` b7)
+      (a8 `mappend` b8)
+  mempty =
+    Aip
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
+      mempty
+
+oneAipBook ::
+  AipBook books
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipBook book =
+  Aip (AipBooks [book]) mempty mempty mempty mempty mempty mempty mempty
+
+oneAipChart ::
+  AipChart charts
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipChart chart =
+  Aip mempty (AipCharts [chart]) mempty mempty mempty mempty mempty mempty
+
+oneAipSupplementsAIC ::
+  AipSupplementsAIC supplementsaics
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipSupplementsAIC supplementsaic =
+  Aip mempty mempty (AipSupplementsAICs [supplementsaic]) mempty mempty mempty mempty mempty
+
+oneAipSummarySUP_AIC ::
+  AipSummarySUP_AIC summarysupaics
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipSummarySUP_AIC summarysupaic =
+  Aip mempty mempty mempty (AipSummarySUP_AICs [summarysupaic]) mempty mempty mempty mempty
+
+oneAipDAP ::
+  AipDAP daps
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipDAP dap =
+  Aip mempty mempty mempty mempty (AipDAPs [dap]) mempty mempty mempty
+
+oneAipDAH ::
+  AipDAH dahs
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipDAH dah =
+  Aip mempty mempty mempty mempty mempty (AipDAHs [dah]) mempty mempty
+
+oneAipERSA ::
+  AipERSA ersas
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipERSA ersa =
+  Aip mempty mempty mempty mempty mempty mempty (AipERSAs [ersa]) mempty
+
+oneAipPrecisionObstacleChart ::
+  AipPrecisionObstacleChart precisionobstaclecharts
+  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+oneAipPrecisionObstacleChart precisionobstaclechart =
+  Aip mempty mempty mempty mempty mempty mempty mempty (AipPrecisionObstacleCharts [precisionobstaclechart])
+
+data AipBook a =
+  AipBook
+    String
+    AipDate
+    AipHref
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipBook where
+  fmap f (AipBook s d h a) =
+    AipBook s d h (f a)
+
+instance Foldable AipBook where
+  foldr f z (AipBook _ _ _ a) =
+    f a z
+
+instance Traversable AipBook where
+  traverse f (AipBook s d h a) =
+    AipBook s d h <$> f a
+
+data AipBooks a =
+  AipBooks
+    [AipBook a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipBooks where
+  fmap f (AipBooks x) =
+    AipBooks ((f <$>) <$> x)
+    
+instance Foldable AipBooks where
+  foldr f z (AipBooks x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipBooks where
+  traverse f (AipBooks x) =
+    AipBooks <$> (traverse . traverse) f x
+
+instance Monoid (AipBooks a) where
+  AipBooks x `mappend` AipBooks y =
+    AipBooks (x `mappend` y)
+  mempty =
+    AipBooks mempty
+
+data AipChart a =
+  AipChart
+    String
+    AipDate
+    AipHref
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipChart where
+  fmap f (AipChart s d h a) =
+    AipChart s d h (f a)
+
+instance Foldable AipChart where
+  foldr f z (AipChart _ _ _ a) =
+    f a z
+
+instance Traversable AipChart where
+  traverse f (AipChart s d h a) =
+    AipChart s d h <$> f a
+
+data AipCharts a =
+  AipCharts
+    [AipChart a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipCharts where
+  fmap f (AipCharts x) =
+    AipCharts ((f <$>) <$> x)
+    
+instance Foldable AipCharts where
+  foldr f z (AipCharts x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipCharts where
+  traverse f (AipCharts x) =
+    AipCharts <$> (traverse . traverse) f x
+
+instance Monoid (AipCharts a) where
+  AipCharts x `mappend` AipCharts y =
+    AipCharts (x `mappend` y)
+  mempty =
+    AipCharts mempty
+    
+data AipSupplementsAIC a =
+  AipSupplementsAIC
+    String
+    AipPg
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipSupplementsAIC where
+  fmap f (AipSupplementsAIC s p a) =
+    AipSupplementsAIC s p (f a)
+
+instance Foldable AipSupplementsAIC where
+  foldr f z (AipSupplementsAIC _ _ a) =
+    f a z
+
+instance Traversable AipSupplementsAIC where
+  traverse f (AipSupplementsAIC s p a) =
+    AipSupplementsAIC s p <$> f a
+
+data AipSupplementsAICs a =
+  AipSupplementsAICs
+    [AipSupplementsAIC a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipSupplementsAICs where
+  fmap f (AipSupplementsAICs x) =
+    AipSupplementsAICs ((f <$>) <$> x)
+    
+instance Foldable AipSupplementsAICs where
+  foldr f z (AipSupplementsAICs x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipSupplementsAICs where
+  traverse f (AipSupplementsAICs x) =
+    AipSupplementsAICs <$> (traverse . traverse) f x
+
+instance Monoid (AipSupplementsAICs a) where
+  AipSupplementsAICs x `mappend` AipSupplementsAICs y =
+    AipSupplementsAICs (x `mappend` y)
+  mempty =
+    AipSupplementsAICs mempty
+
+data AipSummarySUP_AIC a =
+  AipSummarySUP_AIC
+    String
+    String
+    String
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipSummarySUP_AIC where
+  fmap f (AipSummarySUP_AIC s1 s2 s3 a) =
+    AipSummarySUP_AIC s1 s2 s3 (f a)
+
+instance Foldable AipSummarySUP_AIC where
+  foldr f z (AipSummarySUP_AIC _ _ _ a) =
+    f a z
+
+instance Traversable AipSummarySUP_AIC where
+  traverse f (AipSummarySUP_AIC s1 s2 s3 a) =
+    AipSummarySUP_AIC s1 s2 s3 <$> f a
+
+data AipSummarySUP_AICs a =
+  AipSummarySUP_AICs
+    [AipSummarySUP_AIC a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipSummarySUP_AICs where
+  fmap f (AipSummarySUP_AICs x) =
+    AipSummarySUP_AICs ((f <$>) <$> x)
+
+instance Foldable AipSummarySUP_AICs where
+  foldr f z (AipSummarySUP_AICs x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipSummarySUP_AICs where
+  traverse f (AipSummarySUP_AICs x) =
+    AipSummarySUP_AICs <$> (traverse . traverse) f x
+
+instance Monoid (AipSummarySUP_AICs a) where
+  AipSummarySUP_AICs x `mappend` AipSummarySUP_AICs y =
+    AipSummarySUP_AICs (x `mappend` y)
+  mempty =
+    AipSummarySUP_AICs mempty
+
+data AipDAP a =
+  AipDAP
+    String
+    AipDate
+    AipHref
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipDAP where
+  fmap f (AipDAP s d h a) =
+    AipDAP s d h (f a)
+
+instance Foldable AipDAP where
+  foldr f z (AipDAP _ _ _ a) =
+    f a z
+
+instance Traversable AipDAP where
+  traverse f (AipDAP s d h a) =
+    AipDAP s d h <$> f a
+
+data AipDAPs a =
+  AipDAPs
+    [AipDAP a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipDAPs where
+  fmap f (AipDAPs x) =
+    AipDAPs ((f <$>) <$> x)
+    
+instance Foldable AipDAPs where
+  foldr f z (AipDAPs x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipDAPs where
+  traverse f (AipDAPs x) =
+    AipDAPs <$> (traverse . traverse) f x
+
+instance Monoid (AipDAPs a) where
+  AipDAPs x `mappend` AipDAPs y =
+    AipDAPs (x `mappend` y)
+  mempty =
+    AipDAPs mempty
+
+data AipDAH a =
+  AipDAH
+    String
+    String
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipDAH where
+  fmap f (AipDAH s1 s2 a) =
+    AipDAH s1 s2 (f a)
+    
+instance Foldable AipDAH where
+  foldr f z (AipDAH _ _ a) =
+    f a z
+
+instance Traversable AipDAH where
+  traverse f (AipDAH s1 s2 a) =
+    AipDAH s1 s2 <$> f a
+
+data AipDAHs a =
+  AipDAHs
+    [AipDAH a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipDAHs where
+  fmap f (AipDAHs x) =
+    AipDAHs ((f <$>) <$> x)
+    
+instance Foldable AipDAHs where
+  foldr f z (AipDAHs x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipDAHs where
+  traverse f (AipDAHs x) =
+    AipDAHs <$> (traverse . traverse) f x
+
+instance Monoid (AipDAHs a) where
+  AipDAHs x `mappend` AipDAHs y =
+    AipDAHs (x `mappend` y)
+  mempty =
+    AipDAHs mempty
+
+data AipERSA a =
+  AipERSA
+    String
+    AipDate
+    AipHref
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipERSA where
+  fmap f (AipERSA s d h a) =
+    AipERSA s d h (f a)
+
+instance Foldable AipERSA where
+  foldr f z (AipERSA _ _ _ a) =
+    f a z
+
+instance Traversable AipERSA where
+  traverse f (AipERSA s d h a) =
+    AipERSA s d h <$> f a
+
+data AipERSAs a =
+  AipERSAs
+    [AipERSA a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipERSAs where
+  fmap f (AipERSAs x) =
+    AipERSAs ((f <$>) <$> x)
+    
+instance Foldable AipERSAs where
+  foldr f z (AipERSAs x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipERSAs where
+  traverse f (AipERSAs x) =
+    AipERSAs <$> (traverse . traverse) f x
+
+instance Monoid (AipERSAs a) where
+  AipERSAs x `mappend` AipERSAs y =
+    AipERSAs (x `mappend` y)
+  mempty =
+    AipERSAs mempty
+
+data AipPrecisionObstacleChart a =
+  AipPrecisionObstacleChart
+    String
+    String
+    a
+  deriving (Eq, Ord, Show)
+
+instance Functor AipPrecisionObstacleChart where
+  fmap f (AipPrecisionObstacleChart s1 s2 a) =
+    AipPrecisionObstacleChart s1 s2 (f a)
+    
+instance Foldable AipPrecisionObstacleChart where
+  foldr f z (AipPrecisionObstacleChart _ _ a) =
+    f a z
+
+instance Traversable AipPrecisionObstacleChart where
+  traverse f (AipPrecisionObstacleChart s1 s2 a) =
+    AipPrecisionObstacleChart s1 s2 <$> f a
+
+data AipPrecisionObstacleCharts a =
+  AipPrecisionObstacleCharts
+    [AipPrecisionObstacleChart a]
+  deriving (Eq, Ord, Show)
+
+instance Functor AipPrecisionObstacleCharts where
+  fmap f (AipPrecisionObstacleCharts x) =
+    AipPrecisionObstacleCharts ((f <$>) <$> x)
+    
+instance Foldable AipPrecisionObstacleCharts where
+  foldr f z (AipPrecisionObstacleCharts x) =
+    foldr (\a b -> foldr f b a) z x
+
+instance Traversable AipPrecisionObstacleCharts where
+  traverse f (AipPrecisionObstacleCharts x) =
+    AipPrecisionObstacleCharts <$> (traverse . traverse) f x
+
+instance Monoid (AipPrecisionObstacleCharts a) where
+  AipPrecisionObstacleCharts x `mappend` AipPrecisionObstacleCharts y =
+    AipPrecisionObstacleCharts (x `mappend` y)
+  mempty =
+    AipPrecisionObstacleCharts mempty
+
+data AipBookTypes =
+  AipBookTypes {
+    _bookcomplete ::
+      String
+  , _bookgeneral ::
+      String
+  , _bookenroute ::
+      String
+  , _bookaerodrome ::
+      String
+  , _bookindex ::
+      String
+  , _bookamendmentinstructions ::
+      String
+  } deriving (Eq, Ord, Show)
+
+----
 
 aipRequest ::
   String
@@ -53,6 +511,13 @@ aipRequestMethod ::
 aipRequestMethod m s z =
   mkRequest m (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) z "")
 
+doRequest ::
+  HStream a =>
+  Request a
+  -> ExceptT ConnError IO a
+doRequest r =
+  ExceptT ((rspBody <$>) <$> simpleHTTP r)
+
 ----
 
 requestAipTree ::
@@ -61,7 +526,7 @@ requestAipTree =
   let r = setRequestBody
             (aipRequestPost "aip.asp" "?pg=10")
             ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
-  in  ExceptT ((rspBody <$>) <$> simpleHTTP r)
+  in  doRequest r
 
 aipTree ::
   String
@@ -193,11 +658,16 @@ requestAipBooks (Aip (AipBooks books) charts supplementsaics summarysupaics daps
           )
   in  Aip (AipBooks ((\b -> aipBookRequest b <$ b) <$> books)) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
 
+testRequestAipBooks ::
+  ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
 testRequestAipBooks =
-  do  s <- requestAipTree
-      let t = aipTree s
-          u = requestAipBooks t
-      undefined
+  do  ww <- requestAipTree
+      let t = aipTree ww
+          Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts = requestAipBooks t
+          ss :: ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
+          ss = (\b -> Aip (aipBookTree <$> b) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) <$> traverse doRequest books
+          
+      ss
 
 testAipTree ::
   ExceptT ConnError IO Aip0
@@ -207,333 +677,7 @@ testAipTree =
 testAipBook ::
   ExceptT ConnError IO String
 testAipBook =
-  ExceptT ((rspBody <$>) <$> simpleHTTP (aipRequestGet "aip.asp" "?pg=20&vdate=25-May-2017&ver=1"))
-
-----
-
-data Link =
-  Link
-    String
-  deriving (Eq, Ord, Show)
-
-data Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts =
-  Aip {
-    _books ::
-      AipBooks books
-  , _charts ::
-      AipCharts charts
-  , _supplementsaics ::
-      AipSupplementsAICs supplementsaics
-  , _summarysupaics ::
-      AipSummarySUP_AICs summarysupaics      
-  , _daps ::
-      AipDAPs daps
-  , _dahs ::
-      AipDAHs dahs
-  , _ersas ::
-      AipERSAs ersas
-  , _precisionobstaclecharts ::
-      AipPrecisionObstacleCharts precisionobstaclecharts
-  }
-  deriving (Eq, Ord, Show)
-
-type Aip0 =
-  Aip () () () () () () () ()
-
-instance Monoid (Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) where
-  Aip a1 a2 a3 a4 a5 a6 a7 a8 `mappend` Aip b1 b2 b3 b4 b5 b6 b7 b8 =
-    Aip
-      (a1 `mappend` b1)
-      (a2 `mappend` b2)
-      (a3 `mappend` b3)
-      (a4 `mappend` b4)
-      (a5 `mappend` b5)
-      (a6 `mappend` b6)
-      (a7 `mappend` b7)
-      (a8 `mappend` b8)
-  mempty =
-    Aip
-      mempty
-      mempty
-      mempty
-      mempty
-      mempty
-      mempty
-      mempty
-      mempty
-
-oneAipBook ::
-  AipBook books
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipBook book =
-  Aip (AipBooks [book]) mempty mempty mempty mempty mempty mempty mempty
-
-oneAipChart ::
-  AipChart charts
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipChart chart =
-  Aip mempty (AipCharts [chart]) mempty mempty mempty mempty mempty mempty
-
-oneAipSupplementsAIC ::
-  AipSupplementsAIC supplementsaics
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipSupplementsAIC supplementsaic =
-  Aip mempty mempty (AipSupplementsAICs [supplementsaic]) mempty mempty mempty mempty mempty
-
-oneAipSummarySUP_AIC ::
-  AipSummarySUP_AIC summarysupaics
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipSummarySUP_AIC summarysupaic =
-  Aip mempty mempty mempty (AipSummarySUP_AICs [summarysupaic]) mempty mempty mempty mempty
-
-oneAipDAP ::
-  AipDAP daps
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipDAP dap =
-  Aip mempty mempty mempty mempty (AipDAPs [dap]) mempty mempty mempty
-
-oneAipDAH ::
-  AipDAH dahs
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipDAH dah =
-  Aip mempty mempty mempty mempty mempty (AipDAHs [dah]) mempty mempty
-
-oneAipERSA ::
-  AipERSA ersas
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipERSA ersa =
-  Aip mempty mempty mempty mempty mempty mempty (AipERSAs [ersa]) mempty
-
-oneAipPrecisionObstacleChart ::
-  AipPrecisionObstacleChart precisionobstaclecharts
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-oneAipPrecisionObstacleChart precisionobstaclechart =
-  Aip mempty mempty mempty mempty mempty mempty mempty (AipPrecisionObstacleCharts [precisionobstaclechart])
-
-data AipBooks a =
-  AipBooks
-    [AipBook a]
-  deriving (Eq, Ord, Show)
-
-instance Functor AipBooks where
-  fmap f (AipBooks x) =
-    AipBooks ((f <$>) <$> x)
-    
-instance Monoid (AipBooks a) where
-  AipBooks x `mappend` AipBooks y =
-    AipBooks (x `mappend` y)
-  mempty =
-    AipBooks mempty
-
-data AipBook a =
-  AipBook
-    String
-    AipDate
-    AipHref
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipBook where
-  fmap f (AipBook s d h a) =
-    AipBook s d h (f a)
-
-data AipCharts a =
-  AipCharts
-    [AipChart a]
-  deriving (Eq, Ord, Show)
-
-instance Functor AipCharts where
-  fmap f (AipCharts x) =
-    AipCharts ((f <$>) <$> x)
-    
-instance Monoid (AipCharts a) where
-  AipCharts x `mappend` AipCharts y =
-    AipCharts (x `mappend` y)
-  mempty =
-    AipCharts mempty
-    
-data AipChart a =
-  AipChart
-    String
-    AipDate
-    AipHref
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipChart where
-  fmap f (AipChart s d h a) =
-    AipChart s d h (f a)
-
-data AipSupplementsAICs a =
-  AipSupplementsAICs
-    [AipSupplementsAIC a]
-  deriving (Eq, Ord, Show)
-
-instance Functor AipSupplementsAICs where
-  fmap f (AipSupplementsAICs x) =
-    AipSupplementsAICs ((f <$>) <$> x)
-    
-data AipSupplementsAIC a =
-  AipSupplementsAIC
-    String
-    AipPg
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipSupplementsAIC where
-  fmap f (AipSupplementsAIC s p a) =
-    AipSupplementsAIC s p (f a)
-
-instance Monoid (AipSupplementsAICs a) where
-  AipSupplementsAICs x `mappend` AipSupplementsAICs y =
-    AipSupplementsAICs (x `mappend` y)
-  mempty =
-    AipSupplementsAICs mempty
-
-data AipSummarySUP_AICs a =
-  AipSummarySUP_AICs
-    [AipSummarySUP_AIC a]
-  deriving (Eq, Ord, Show)
-
-data AipSummarySUP_AIC a =
-  AipSummarySUP_AIC
-    String
-    String
-    String
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipSummarySUP_AIC where
-  fmap f (AipSummarySUP_AIC s1 s2 s3 a) =
-    AipSummarySUP_AIC s1 s2 s3 (f a)
-
-instance Monoid (AipSummarySUP_AICs a) where
-  AipSummarySUP_AICs x `mappend` AipSummarySUP_AICs y =
-    AipSummarySUP_AICs (x `mappend` y)
-  mempty =
-    AipSummarySUP_AICs mempty
-
-data AipDAPs a =
-  AipDAPs
-    [AipDAP a]
-  deriving (Eq, Ord, Show)
-
-instance Functor AipDAPs where
-  fmap f (AipDAPs x) =
-    AipDAPs ((f <$>) <$> x)
-    
-instance Monoid (AipDAPs a) where
-  AipDAPs x `mappend` AipDAPs y =
-    AipDAPs (x `mappend` y)
-  mempty =
-    AipDAPs mempty
-
-data AipDAP a =
-  AipDAP
-    String
-    AipDate
-    AipHref
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipDAP where
-  fmap f (AipDAP s d h a) =
-    AipDAP s d h (f a)
-
-data AipDAHs a =
-  AipDAHs
-    [AipDAH a]
-  deriving (Eq, Ord, Show)
-
-instance Functor AipDAHs where
-  fmap f (AipDAHs x) =
-    AipDAHs ((f <$>) <$> x)
-    
-data AipDAH a =
-  AipDAH
-    String
-    String
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipDAH where
-  fmap f (AipDAH s1 s2 a) =
-    AipDAH s1 s2 (f a)
-    
-instance Monoid (AipDAHs a) where
-  AipDAHs x `mappend` AipDAHs y =
-    AipDAHs (x `mappend` y)
-  mempty =
-    AipDAHs mempty
-
-data AipERSAs a =
-  AipERSAs
-    [AipERSA a]
-  deriving (Eq, Ord, Show)
-
-instance Functor AipERSAs where
-  fmap f (AipERSAs x) =
-    AipERSAs ((f <$>) <$> x)
-    
-instance Monoid (AipERSAs a) where
-  AipERSAs x `mappend` AipERSAs y =
-    AipERSAs (x `mappend` y)
-  mempty =
-    AipERSAs mempty
-
-data AipERSA a =
-  AipERSA
-    String
-    AipDate
-    AipHref
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipERSA where
-  fmap f (AipERSA s d h a) =
-    AipERSA s d h (f a)
-
-data AipPrecisionObstacleCharts a =
-  AipPrecisionObstacleCharts
-    [AipPrecisionObstacleChart a]
-  deriving (Eq, Ord, Show)
-
-instance Functor AipPrecisionObstacleCharts where
-  fmap f (AipPrecisionObstacleCharts x) =
-    AipPrecisionObstacleCharts ((f <$>) <$> x)
-    
-data AipPrecisionObstacleChart a =
-  AipPrecisionObstacleChart
-    String
-    String
-    a
-  deriving (Eq, Ord, Show)
-
-instance Functor AipPrecisionObstacleChart where
-  fmap f (AipPrecisionObstacleChart s1 s2 a) =
-    AipPrecisionObstacleChart s1 s2 (f a)
-    
-instance Monoid (AipPrecisionObstacleCharts a) where
-  AipPrecisionObstacleCharts x `mappend` AipPrecisionObstacleCharts y =
-    AipPrecisionObstacleCharts (x `mappend` y)
-  mempty =
-    AipPrecisionObstacleCharts mempty
-
-data AipBookTypes =
-  AipBookTypes {
-    _bookcomplete ::
-      String
-  , _bookgeneral ::
-      String
-  , _bookenroute ::
-      String
-  , _bookaerodrome ::
-      String
-  , _bookindex ::
-      String
-  , _bookamendmentinstructions ::
-      String
-  } deriving (Eq, Ord, Show)
+  doRequest (aipRequestGet "aip.asp" "?pg=20&vdate=25-May-2017&ver=1")
 
 ----
 
