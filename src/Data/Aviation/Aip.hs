@@ -1,7 +1,17 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Data.Aviation.Aip where
 
+import Control.Applicative
+import Control.Lens
+import Data.Bool
 import Data.Maybe
-import Network.Stream
+import Network.Stream hiding (Stream)
 import Network.HTTP
 import Network.URI
 import Prelude
@@ -9,225 +19,215 @@ import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.HTML.TagSoup.Tree.Util
 import Text.HTML.TagSoup.Tree.Zipper
+import Text.Parsec(Parsec, Stream, parse)
+import Text.Parser.Char
+import Text.Parser.Combinators
 import Control.Monad.Trans.Except
+import Data.Aviation.Aip.Types
 
+----
 
 aipRequest ::
   String
   -> Request String
-aipRequest s = 
-  mkRequest GET (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) "" "")
+aipRequest s =
+  aipRequestGet s ""
 
-aipRequestTree ::
+aipRequestGet ::
   String
-  -> ExceptT ConnError IO [TagTree String]
-aipRequestTree s =
-   ExceptT ((parseTree . rspBody <$>) <$> simpleHTTP (aipRequest s))
+  -> String
+  -> Request String
+aipRequestGet =
+  aipRequestMethod GET
 
-aipRequestTreePos ::
+aipRequestPost ::
   String
-  -> ExceptT ConnError IO (TagTreePos String)
-aipRequestTreePos s =
-  fromTagTree . htmlRoot <$> aipRequestTree s
+  -> String
+  -> Request String
+aipRequestPost =
+  aipRequestMethod POST
 
----
+aipRequestMethod ::
+  RequestMethod
+  -> String
+  -> String
+  -> Request String
+aipRequestMethod m s z =
+  mkRequest m (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) z "")
 
-request ::
-  Request String
-request = 
-  let uri =
-        URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) "/aip/aip.asp" "?pg=10" ""
-      headers =
-        [
-        ]
-  in  setRequestBody (setHeaders (mkRequest POST uri) headers) ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
+doRequest ::
+  HStream a =>
+  Request a
+  -> ExceptT ConnError IO a
+doRequest r =
+  ExceptT ((rspBody <$>) <$> simpleHTTP r)
+
+----
+
+requestAipTree ::
+  ExceptT ConnError IO String
+requestAipTree =
+  let r = setRequestBody
+            (aipRequestPost "aip.asp" "?pg=10")
+            ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
+  in  doRequest r
 
 aipTree ::
-  ExceptT ConnError IO [TagTree String]
+  String
+  -> Aip0
 aipTree =
-   ExceptT ((parseTree . rspBody <$>) <$> simpleHTTP request)
-
-aipTreePos ::
-  ExceptT ConnError IO (TagTreePos String)
-aipTreePos =
-  fromTagTree . htmlRoot <$> aipTree
-
-data AipHref =
-  AipHref
-    Char
-    Char
-    Char
-    Char
-    Char
-    Char
-    Char
-    Char
-    Char
-    Char
-    Char
-    Char
-  deriving (Eq, Ord, Show)
-
-data AipTag =
-  AipTag
-    String -- text
-    AipHref -- href
-  deriving (Eq, Ord, Show)
-
-data AipType =
-  Book
-  | Charts
-  | DAP
-  | ERSA
-  deriving (Eq, Ord, Show)
-
-data AipElement =
-  AipElement
-    AipType
-    AipTag
-  deriving (Eq, Ord, Show)
-
-traverseAip ::
-  TagTreePos String
-  -> [AipElement]
-traverseAip t =
-  let aipHref ('a':'i':'p':'.':'a':'s':'p':'?':'p':'g':'=':p1:p2:'&':'v':'d':'a':'t':'e':'=':d1:d2:'-':m1:m2:m3:'-':y1:y2:y3:y4:'&':'v':'e':'r':'=':v:[]) =
-        Just (AipHref p1 p2 d1 d2 m1 m2 m3 y1 y2 y3 y4 v)
-      aipHref _ =
-        Nothing
-      aipType "AIP Book" =
-        Just Book
-      aipType "AIP Charts" =
-        Just Charts
-      aipType "Departure and Approach Procedures (DAP)" =
-        Just DAP
-      aipType "En Route Supplement Australia (ERSA)" =
-        Just ERSA
-      aipType _ =
-        Nothing
-  in  case t of
-        TagTreePos
-          (TagBranch "a" [("href", href)] [TagLeaf (TagText n)])
-          _
-          [TagLeaf (TagText tx)]
+  let aipTreeTraversal ::
+        TagTreePos String
+        -> Aip0
+      aipTreeTraversal t =
+        case t of
+          TagTreePos (TagBranch "li" [] [TagBranch "a" [("href", href)] [TagLeaf (TagText n)]]) _ _ _ ->
+            case n of
+              "AIP Supplements and AICs" ->
+                let p = do  g <- runParse parseAipPgHref href
+                            pure (oneAipSupplementsAIC (AipSupplementsAIC n g ()))
+                in  fromMaybe mempty p
+              'S':'u':'m':'m':'a':'r':'y':' ':'o':'f':' ':'S':'U':'P':'/':'A':'I':'C':' ':'C':'u':'r':'r':'e':'n':'t':' ':r ->
+                oneAipSummarySUP_AIC (AipSummarySUP_AIC n href r ())
+              "Precision Approach Terrain Charts and Type A & Type B Obstacle Charts" ->
+                oneAipPrecisionObstacleChart (AipPrecisionObstacleChart n href ())
+              _ ->
+                mempty
+          TagTreePos (TagBranch "li" [] (TagBranch "a" [("href", href)] [TagLeaf (TagText n)]:TagLeaf (TagText tx):_)) _ _ _ ->
+            let pdate = do  _ <- space
+                            between (char '(') (char ')') parseAipDate
+            in  case n of
+                  "AIP Book" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipBook (AipBook n d h ()))
+                    in  fromMaybe mempty p   
+                  "AIP Charts" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipChart (AipChart n d h ()))
+                    in  fromMaybe mempty p
+                  "Departure and Approach Procedures (DAP)" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipDAP (AipDAP n d h ()))
+                    in  fromMaybe mempty p
+                  "Designated Airspace Handbook (DAH)" ->
+                    oneAipDAH (AipDAH n href ())
+                  "En Route Supplement Australia (ERSA)" ->
+                    let p = do  h <- runParse parseAipHref href
+                                d <- runParse pdate tx
+                                pure (oneAipERSA (AipERSA n d h ()))
+                    in  fromMaybe mempty p   
+                  _ ->
+                    mempty
           _ ->
-            maybeToList $ 
-              aipHref href >>= \h -> 
-              aipType n    >>= \x ->
-              return (AipElement x (AipTag tx h))
-        _ ->
-          []
+            mempty
 
-aipHrefRequest ::
-  AipHref
-  -> Request String
-aipHrefRequest (AipHref p1 p2 d1 d2 m1 m2 m3 y1 y2 y3 y4 v) = 
-  let q =
-        concat [
-          "?pg="
-        , [p1]
-        , [p2]
-        , "&vdate="
-        , [d1]
-        , [d2]
-        , "-"
-        , [m1]
-        , [m2]
-        , [m3]
-        , "-"
-        , [y1]
-        , [y2]
-        , [y3]
-        , [y4]
-        , "&ver="
-        , [v]
-        ]
-      uri =
-        URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) "/aip/aip.asp" q ""
-      headers =
-        [
-        ]
-  in  setRequestBody (setHeaders (mkRequest POST uri) headers) ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
+  in  traverseTree aipTreeTraversal . fromTagTree . htmlRoot . parseTree
 
-aipHrefTree ::
-  AipHref
-  -> ExceptT ConnError IO [TagTree String]
-aipHrefTree h =
-   ExceptT ((parseTree . rspBody <$>) <$> simpleHTTP (aipHrefRequest h))
+aipBookTree ::
+  String
+  -> Maybe AipBookTypes
+aipBookTree =
+  let aipBookTreeTraversed ::
+        TagTreePos String
+        -> Maybe AipBookTypes
+      aipBookTreeTraversed t =
+        let trav t' =   case t' of
+                          TagTreePos
+                            (
+                              TagBranch "ul" []
+                              [
+                                TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", completeHref)] [TagLeaf (TagText "Complete")]]
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", generalHref)] [TagLeaf (TagText "General")]]
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", enrouteHref)] [TagLeaf (TagText "En Route")]]
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", aerodromeHref)] [TagLeaf (TagText "Aerodrome")]]
+                              , TagLeaf (TagText _)
+                              , TagLeaf (TagComment ind)
+                              , TagLeaf (TagText _)
+                              , TagBranch "li" [] [TagBranch "a" [("href", coverHref)] [TagLeaf (TagText "Amendment Instructions")]]
+                              , TagLeaf (TagText _)
+                              ]
+                            )
+                            _ _ _ ->
+                              let (i, j) =
+                                    break (== '"') ind
+                                  ind' =
+                                    bool mempty (takeWhile (/= '"') . drop 1 $ j) (i == "<li><a href=")
+                              in  (([completeHref], [generalHref], [enrouteHref]), ([aerodromeHref], [ind'], [coverHref]))
+                          _ ->
+                            mempty
+        in  case traverseTree trav t of
+              (([c], [g], [e]), ([a], [i], [m])) ->
+                Just
+                  (AipBookTypes c g e a i m)
+              _ ->
+                Nothing
+  in  aipBookTreeTraversed . fromTagTree . htmlRoot . parseTree
 
-aipHrefTreePos ::
-  AipHref
-  -> ExceptT ConnError IO (TagTreePos String)
-aipHrefTreePos h =
-  fromTagTree . htmlRoot <$> aipHrefTree h
+requestAipBooks ::
+  Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+  -> Aip (Request String) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
+requestAipBooks (Aip (AipBooks books) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) =
+  let aipBookRequest ::
+        AipBook a
+        -> Request String
+      aipBookRequest (AipBook _ _ (AipHref (AipPg p1 p2) (AipDate (Day dy1 dy2) m (Year y1 y2 y3 y4)) v) _) = 
+        aipRequestGet
+          "aip.asp"
+          (
+            concat
+              [
+                "?pg="
+              , show p1
+              , show p2
+              , "&vdate="
+              , show dy1
+              , show dy2
+              , "-"
+              , show m
+              , "-"
+              , show y1
+              , show y2
+              , show y3
+              , show y4
+              , "&ver="
+              , show v
+              ]
+          )
+  in  Aip (AipBooks ((\b -> aipBookRequest b <$ b) <$> books)) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
 
----- AIP Book
+testRequestAipBooks ::
+  ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
+testRequestAipBooks =
+  do  ww <- requestAipTree
+      let t = aipTree ww
+          u = requestAipBooks t
+          Aip bbooks charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts = requestAipBooks t
+          ss :: ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
+          ss = (\b -> Aip (aipBookTree <$> b) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) <$> traverse doRequest bbooks
 
-data AipBookElements =
-  AipBookElements
-    String -- href
-    String -- name
-  deriving (Eq, Ord, Show)
+      ss
 
-traverseAipBook ::
-  TagTreePos String
-  -> [AipBookElements]
-traverseAipBook t =
-  case t of
-    TagTreePos
-      (TagBranch "li" [] [TagBranch "a" [("href", h)] [TagLeaf (TagText x)]])
-      _
-      _
-      _ ->
-      [AipBookElements h x]
-    TagTreePos
-      (TagLeaf (TagComment "<li><a href=\"current/aip/index.pdf\">Index</a></li>"))
-      _
-      _
-      _ ->
-      [AipBookElements "current/aip/index.pdf" "Index"]
-    _ ->
-      []
+testAipTree ::
+  ExceptT ConnError IO Aip0
+testAipTree =
+  aipTree <$> requestAipTree
 
----- AIP Charts
+testAipBook ::
+  ExceptT ConnError IO String
+testAipBook =
+  doRequest (aipRequestGet "aip.asp" "?pg=20&vdate=25-May-2017&ver=1")
 
-data AipChartElements =
-  AipChartElements
-    String -- href
-    String -- name
-  deriving (Eq, Ord, Show)
-
-traverseAipCharts ::
-  TagTreePos [Char]
-  -> [AipChartElements]
-traverseAipCharts t =
-  case t of
-    TagTreePos
-      (TagBranch "li" [] [TagBranch "a" [("href", h)] [TagLeaf (TagText x)]])
-      _
-      _
-      _ ->
-      [AipChartElements h x]
-    _ ->
-      []
-
----- AIP Chart Sections
-
--- runExceptT $ traverseTree traverseAipCharts  <$> aipRequestTreePos "aip.asp?pg=60&vdate=25-May-2017&sect=ERCHigh&ver=1"
-
--- AIP ERSA
-
-  
----- test values
-
--- aip.asp?pg=60&vdate=25-May-2017&sect=ERCHigh&ver=1
-
-testBookHref :: 
-  AipHref
-testBookHref =
-  AipHref '2' '0' '2' '5' 'M' 'a' 'y' '2' '0' '1' '7' '1'
-
-testChartsHref ::
-  AipHref
-testChartsHref =
-  AipHref '6' '0' '2' '5' 'M' 'a' 'y' '2' '0' '1' '7' '1'
+runParse ::
+  Stream s Identity t =>
+  Parsec s () a
+  -> s
+  -> Maybe a
+runParse p s =
+  parse p "aip" s ^? _Right

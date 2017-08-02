@@ -49,7 +49,33 @@ library
 
   exposed-modules:
                     Data.Aviation.Aip
-                    Data.Aviation.Aip2
+                    Data.Aviation.Aip.Request
+                    Data.Aviation.Aip.Types
+                    Data.Aviation.Aip.Types.Aip
+                    Data.Aviation.Aip.Types.AipBook
+                    Data.Aviation.Aip.Types.AipBooks
+                    Data.Aviation.Aip.Types.AipBookTypes
+                    Data.Aviation.Aip.Types.AipChart
+                    Data.Aviation.Aip.Types.AipCharts
+                    Data.Aviation.Aip.Types.AipDAH
+                    Data.Aviation.Aip.Types.AipDAHs
+                    Data.Aviation.Aip.Types.AipDAP
+                    Data.Aviation.Aip.Types.AipDAPs
+                    Data.Aviation.Aip.Types.AipDate
+                    Data.Aviation.Aip.Types.AipERSA
+                    Data.Aviation.Aip.Types.AipERSAs
+                    Data.Aviation.Aip.Types.AipHref
+                    Data.Aviation.Aip.Types.AipPg
+                    Data.Aviation.Aip.Types.AipPrecisionObstacleChart
+                    Data.Aviation.Aip.Types.AipPrecisionObstacleCharts
+                    Data.Aviation.Aip.Types.AipSummarySUP_AIC
+                    Data.Aviation.Aip.Types.AipSummarySUP_AICs
+                    Data.Aviation.Aip.Types.AipSupplementsAIC
+                    Data.Aviation.Aip.Types.AipSupplementsAICs
+                    Data.Aviation.Aip.Types.Day
+                    Data.Aviation.Aip.Types.Link
+                    Data.Aviation.Aip.Types.Month
+                    Data.Aviation.Aip.Types.Year
 
 test-suite doctests
   type:
