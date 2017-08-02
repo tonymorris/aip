@@ -1,6 +1,5 @@
 module Data.Aviation.Aip.Types.Month where
 
-import Data.Digit
 import Prelude
 import Text.Parser.Combinators
 import Text.Parser.Char

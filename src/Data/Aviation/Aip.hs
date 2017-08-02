@@ -207,7 +207,6 @@ testRequestAipBooks ::
 testRequestAipBooks =
   do  ww <- requestAipTree
       let t = aipTree ww
-          u = requestAipBooks t
           Aip bbooks charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts = requestAipBooks t
           ss :: ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
           ss = (\b -> Aip (aipBookTree <$> b) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts) <$> traverse doRequest bbooks

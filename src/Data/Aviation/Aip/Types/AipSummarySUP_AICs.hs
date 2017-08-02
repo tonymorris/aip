@@ -2,11 +2,8 @@ module Data.Aviation.Aip.Types.AipSummarySUP_AICs where
 
 import Control.Applicative
 import Control.Lens
-import Data.Digit
 import Data.Aviation.Aip.Types.AipSummarySUP_AIC
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipSummarySUP_AICs a =
   AipSummarySUP_AICs

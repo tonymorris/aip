@@ -4,10 +4,7 @@ import Control.Applicative
 import Control.Lens
 import Data.Aviation.Aip.Types.AipDate
 import Data.Aviation.Aip.Types.AipHref
-import Data.Digit
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipChart a =
   AipChart

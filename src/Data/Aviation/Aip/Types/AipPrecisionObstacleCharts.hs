@@ -3,10 +3,7 @@ module Data.Aviation.Aip.Types.AipPrecisionObstacleCharts where
 import Control.Applicative
 import Control.Lens
 import Data.Aviation.Aip.Types.AipPrecisionObstacleChart
-import Data.Digit
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipPrecisionObstacleCharts a =
   AipPrecisionObstacleCharts

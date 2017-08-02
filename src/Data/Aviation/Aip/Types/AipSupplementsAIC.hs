@@ -3,10 +3,7 @@ module Data.Aviation.Aip.Types.AipSupplementsAIC where
 import Control.Applicative
 import Control.Lens
 import Data.Aviation.Aip.Types.AipPg
-import Data.Digit
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipSupplementsAIC a =
   AipSupplementsAIC

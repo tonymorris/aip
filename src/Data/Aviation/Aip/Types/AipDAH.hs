@@ -2,10 +2,7 @@ module Data.Aviation.Aip.Types.AipDAH where
 
 import Control.Applicative
 import Control.Lens
-import Data.Digit
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipDAH a =
   AipDAH

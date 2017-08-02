@@ -1,10 +1,8 @@
 module Data.Aviation.Aip.Types.Aip where
 
-import Control.Applicative
-import Control.Lens
+-- import Control.Lens
 import Data.Aviation.Aip.Types.AipBook
 import Data.Aviation.Aip.Types.AipBooks
-import Data.Aviation.Aip.Types.AipBookTypes
 import Data.Aviation.Aip.Types.AipChart
 import Data.Aviation.Aip.Types.AipCharts
 import Data.Aviation.Aip.Types.AipDAH
@@ -19,10 +17,7 @@ import Data.Aviation.Aip.Types.AipSummarySUP_AIC
 import Data.Aviation.Aip.Types.AipSummarySUP_AICs
 import Data.Aviation.Aip.Types.AipSupplementsAIC
 import Data.Aviation.Aip.Types.AipSupplementsAICs
-import Data.Digit
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts =
   Aip {

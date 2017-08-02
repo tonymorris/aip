@@ -8,12 +8,6 @@ module Data.Aviation.Aip.Types(
     module A
   ) where
 
-import Control.Applicative
-import Control.Lens
-import Data.Digit
-import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 import Data.Aviation.Aip.Types.Aip as A
 import Data.Aviation.Aip.Types.AipBook as A
 import Data.Aviation.Aip.Types.AipBooks as A

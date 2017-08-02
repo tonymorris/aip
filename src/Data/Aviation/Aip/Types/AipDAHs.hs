@@ -2,12 +2,8 @@ module Data.Aviation.Aip.Types.AipDAHs where
 
 import Control.Applicative
 import Control.Lens
-import Data.Aviation.Aip.Types.AipChart
 import Data.Aviation.Aip.Types.AipDAH
-import Data.Digit
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipDAHs a =
   AipDAHs

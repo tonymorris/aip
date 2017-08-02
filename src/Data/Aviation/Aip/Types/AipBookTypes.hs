@@ -1,11 +1,7 @@
 module Data.Aviation.Aip.Types.AipBookTypes where
 
-import Control.Applicative
-import Control.Lens
-import Data.Digit
+-- import Control.Lens
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipBookTypes =
   AipBookTypes {

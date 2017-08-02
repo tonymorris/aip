@@ -1,14 +1,11 @@
 module Data.Aviation.Aip.Types.AipDate where
 
 import Control.Applicative
-import Control.Lens
 import Data.Aviation.Aip.Types.Day
 import Data.Aviation.Aip.Types.Month
 import Data.Aviation.Aip.Types.Year
-import Data.Digit
 import Prelude
 import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipDate =
   AipDate

@@ -2,13 +2,8 @@ module Data.Aviation.Aip.Types.AipERSAs where
 
 import Control.Applicative
 import Control.Lens
-import Data.Aviation.Aip.Types.AipDate
-import Data.Aviation.Aip.Types.AipHref
 import Data.Aviation.Aip.Types.AipERSA
-import Data.Digit
 import Prelude
-import Text.Parser.Char
-import Text.Parser.Combinators
 
 data AipERSAs a =
   AipERSAs
