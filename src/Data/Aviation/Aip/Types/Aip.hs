@@ -116,4 +116,3 @@ oneAipPrecisionObstacleChart precisionobstaclechart =
   Aip mempty mempty mempty mempty mempty mempty mempty (AipPrecisionObstacleCharts [precisionobstaclechart])
 
 makeLenses ''Aip
--- makeClassy ''Aip
