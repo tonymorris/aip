@@ -9,9 +9,13 @@ module Data.Aviation.Aip where
 
 import Control.Applicative
 import Control.Lens
-import Data.Bool
+import Control.Monad.IO.Class
+import Data.ByteString
+import qualified Data.ByteString as ByteString
 import Data.Maybe
+import Network.BufferType
 import Network.Stream hiding (Stream)
+import Network.Download
 import Network.HTTP
 import Network.URI
 import Prelude
@@ -34,24 +38,27 @@ aipRequest s =
   aipRequestGet s ""
 
 aipRequestGet ::
+  BufferType ty =>
   String
   -> String
-  -> Request String
+  -> Request ty
 aipRequestGet =
   aipRequestMethod GET
 
 aipRequestPost ::
+  BufferType ty =>
   String
   -> String
-  -> Request String
+  -> Request ty
 aipRequestPost =
   aipRequestMethod POST
 
 aipRequestMethod ::
+  BufferType ty =>
   RequestMethod
   -> String
   -> String
-  -> Request String
+  -> Request ty
 aipRequestMethod m s z =
   mkRequest m (URI "http:" (Just (URIAuth "" "www.airservicesaustralia.com" "")) ("/aip/" ++ s) z "")
 
@@ -72,122 +79,47 @@ requestAipContents =
             ("application/x-www-form-urlencoded", "Submit=I+Agree&check=1")
   in  doRequest r
 
+data Ersa =
+  Ersa
+    AipHref
+    AipDate
+  deriving (Eq, Ord, Show)
+
+newtype Ersas =
+  Ersas
+    [Ersa]
+  deriving (Eq, Ord, Show)
+
+instance Monoid Ersas where
+  mempty =
+    Ersas
+      mempty
+  Ersas x `mappend` Ersas y =
+    Ersas (x `mappend` y)
+
 parseAipTree ::
   String
-  -> Aip0
+  -> Ersas
 parseAipTree =
   let aipTreeTraversal ::
         TagTreePos String
-        -> Aip0
+        -> Ersas
       aipTreeTraversal t =
         case t of
-          TagTreePos (TagBranch "li" [] [TagBranch "a" [("href", href)] [TagLeaf (TagText n)]]) _ _ _ ->
-            case n of
-              "AIP Supplements and AICs" ->
-                let p = do  g <- runParse parseAipPgHref href
-                            pure (oneAipSupplementsAIC (AipSupplementsAIC n g ()))
-                in  fromMaybe mempty p
-              'S':'u':'m':'m':'a':'r':'y':' ':'o':'f':' ':'S':'U':'P':'/':'A':'I':'C':' ':'C':'u':'r':'r':'e':'n':'t':' ':r ->
-                oneAipSummarySUP_AIC (AipSummarySUP_AIC n href r ())
-              "Precision Approach Terrain Charts and Type A & Type B Obstacle Charts" ->
-                oneAipPrecisionObstacleChart (AipPrecisionObstacleChart n href ())
-              _ ->
-                mempty
           TagTreePos (TagBranch "li" [] (TagBranch "a" [("href", href)] [TagLeaf (TagText n)]:TagLeaf (TagText tx):_)) _ _ _ ->
             let pdate = do  _ <- space
                             between (char '(') (char ')') parseAipDate
             in  case n of
-                  "AIP Book" ->
-                    let p = do  h <- runParse parseAipHref href
-                                d <- runParse pdate tx
-                                pure (oneAipBook (AipBook n d h ()))
-                    in  fromMaybe mempty p   
-                  "AIP Charts" ->
-                    let p = do  h <- runParse parseAipHref href
-                                d <- runParse pdate tx
-                                pure (oneAipChart (AipChart n d h ()))
-                    in  fromMaybe mempty p
-                  "Departure and Approach Procedures (DAP)" ->
-                    let p = do  h <- runParse parseAipHref href
-                                d <- runParse pdate tx
-                                pure (oneAipDAP (AipDAP n d h ()))
-                    in  fromMaybe mempty p
-                  "Designated Airspace Handbook (DAH)" ->
-                    oneAipDAH (AipDAH n href ())
                   "En Route Supplement Australia (ERSA)" ->
                     let p = do  h <- runParse parseAipHref href
                                 d <- runParse pdate tx
-                                pure (oneAipERSA (AipERSA n d h ()))
-                    in  fromMaybe mempty p   
+                                pure (Ersas [Ersa h d])
+                    in  fromMaybe mempty p
                   _ ->
                     mempty
           _ ->
             mempty
-
   in  traverseTree aipTreeTraversal . fromTagTree . htmlRoot . parseTree
-
-parseBookTree ::
-  String
-  -> Maybe AipBookTypes
-parseBookTree =
-  let aipBookTreeTraversed ::
-        TagTreePos String
-        -> Maybe AipBookTypes
-      aipBookTreeTraversed t =
-        let trav t' =   
-              case t' of
-                TagTreePos
-                  (
-                    TagBranch "ul" []
-                    [
-                      TagLeaf (TagText _)
-                    , TagBranch "li" [] [TagBranch "a" [("href", completeHref)] [TagLeaf (TagText "Complete")]]
-                    , TagLeaf (TagText _)
-                    , TagBranch "li" [] [TagBranch "a" [("href", generalHref)] [TagLeaf (TagText "General")]]
-                    , TagLeaf (TagText _)
-                    , TagBranch "li" [] [TagBranch "a" [("href", enrouteHref)] [TagLeaf (TagText "En Route")]]
-                    , TagLeaf (TagText _)
-                    , TagBranch "li" [] [TagBranch "a" [("href", aerodromeHref)] [TagLeaf (TagText "Aerodrome")]]
-                    , TagLeaf (TagText _)
-                    , TagLeaf (TagComment ind)
-                    , TagLeaf (TagText _)
-                    , TagBranch "li" [] [TagBranch "a" [("href", coverHref)] [TagLeaf (TagText "Amendment Instructions")]]
-                    , TagLeaf (TagText _)
-                    ]
-                  )
-                  _ _ _ ->
-                    let (i, j) =
-                          break (== '"') ind
-                        ind' =
-                          bool mempty (takeWhile (/= '"') . drop 1 $ j) (i == "<li><a href=")
-                    in  (([completeHref], [generalHref], [enrouteHref]), ([aerodromeHref], [ind'], [coverHref]))
-                _ ->
-                  mempty
-        in  case traverseTree trav t of
-              (([c], [g], [e]), ([a], [i], [m])) ->
-                Just
-                  (AipBookTypes c g e a i m)
-              _ ->
-                Nothing
-  in  aipBookTreeTraversed . fromTagTree . htmlRoot . parseTree
-
-requestAipBookTree ::
-  Applicative f =>
-  (Request String -> f String)
-  -> Aip books charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts
-  -> f (Aip (Maybe AipBookTypes) charts supplementsaics summarysupaics daps dahs ersas precisionobstaclecharts)
-requestAipBookTree f =
-  let aipBookRequest ::
-        AipBook a
-        -> Request String
-      aipBookRequest = 
-        aipRequestGet "aip.asp" . uriAipHref
-  in  books (_Wrapped (traverse (traverse ((parseBookTree <$>) . f)))) . over (books . _Wrapped) ((\b -> aipBookRequest b <$ b) <$>)
-
-testRequestAipBooks ::
-  ExceptT ConnError IO (Aip (Maybe AipBookTypes) () () () () () () ())
-testRequestAipBooks =
-  requestAipContents >>= requestAipBookTree doRequest . parseAipTree
 
 runParse ::
   Stream s Identity t =>
@@ -196,3 +128,130 @@ runParse ::
   -> Maybe a
 runParse p s =
   parse p "aip" s ^? _Right
+
+{-
+main = do
+    jpg <- get "http://www.irregularwebcomic.net/comics/irreg2557.jpg"
+    B.writeFile "irreg2557.jpg" jpg
+  where
+    get url = let uri = case parseURI url of
+                          Nothing -> error $ "Invalid URI: " ++ url
+                          Just u -> u in
+              simpleHTTP (defaultGETRequest_ uri) >>= getResponseBody
+-}
+
+test2 ::
+  ExceptT ConnError IO ()
+test2 = 
+  let g = aipRequestGet "current/aip/complete.pdf" ""
+  in  doRequest g >>= liftIO . ByteString.writeFile "/tmp/h.pdf"
+
+{-
+# AIP Book (pending)
+
+http://www.airservicesaustralia.com/aip/pending/aip/complete.pdf
+http://www.airservicesaustralia.com/aip/pending/aip/general.pdf
+http://www.airservicesaustralia.com/aip/pending/aip/enroute.pdf
+http://www.airservicesaustralia.com/aip/pending/aip/aerodrome.pdf
+http://www.airservicesaustralia.com/aip/pending/aip/cover.pdf
+
+# AIP Book (current)
+
+http://www.airservicesaustralia.com/aip/current/aip/complete.pdf
+http://www.airservicesaustralia.com/aip/current/aip/general.pdf
+http://www.airservicesaustralia.com/aip/current/aip/enroute.pdf
+http://www.airservicesaustralia.com/aip/current/aip/aerodrome.pdf
+http://www.airservicesaustralia.com/aip/current/aip/cover.pdf
+
+# AIP Charts (current)
+
+http://www.airservicesaustralia.com/aip/current/aipchart/erch/erch1.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/erch/erch2.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/erch/erch3.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/erch/erch4.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/erch/erch5.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl1.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl2.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl3.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl4.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl5.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl6.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl7.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/ercl/ercl8.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/pca/PCA_back.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/pca/PCA_front.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac1.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac2.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac3.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac4.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac5.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac6.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac7.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/tac/tac8.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Adelaide_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Brisbane_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Bundaberg_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Cairns_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Darwin_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Deniliquin_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Hobart_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Launceston_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Melbourne_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Newcastle_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Perth_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Rockhampton_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Sydney_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Tindal_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vnc/Townsville_VNC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Adelaide_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Albury_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/AliceSprings_Uluru_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Brisbane_Sunshine_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Broome_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Cairns_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Canberra_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Coffs_Harbour_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Darwin_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Gold_Coast_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Hobart_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Karratha_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Launceston_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Mackay_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Melbourne_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Newcastle_Williamtown_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Oakey_Bris_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/perth_legend.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Perth_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Rockhampton_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Sydney_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Tamworth_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Townsville_VTC.pdf
+http://www.airservicesaustralia.com/aip/current/aipchart/vtc/Whitsunday_VTC.pdf
+
+# DAP (current)
+
+http://www.airservicesaustralia.com/aip/current/dap/SpecNotManTOC.htm
+http://www.airservicesaustralia.com/aip/current/dap/ChecklistTOC.htm
+http://www.airservicesaustralia.com/aip/current/dap/LegendInfoTablesTOC.htm
+http://www.airservicesaustralia.com/aip/current/dap/AeroProcChartsTOC.htm
+
+# DAP (pending)
+
+http://www.airservicesaustralia.com/aip/pending/dap/SpecNotManTOC.htm
+http://www.airservicesaustralia.com/aip/pending/dap/ChecklistTOC.htm
+http://www.airservicesaustralia.com/aip/pending/dap/LegendInfoTablesTOC.htm
+http://www.airservicesaustralia.com/aip/pending/dap/AeroProcChartsTOC.htm
+
+# DAH (current)
+
+http://www.airservicesaustralia.com/aip/current/dah/dah.pdf
+
+# ERSA
+
+\(dd-mmm-yyyy) ->
+  …
+
+# Precision Approach Terrain Charts and Type A & Type B Obstacle Charts
+
+http://www.airservicesaustralia.com/aip/current/chart/TypeAandBCharts.pdf
+-}
