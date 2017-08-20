@@ -38,6 +38,7 @@ library
                     , lens
                     , bytestring
                     , filepath
+                    , directory
                     
   ghc-options:
                     -Wall

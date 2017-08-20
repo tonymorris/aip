@@ -18,6 +18,7 @@ import Network.Stream hiding (Stream)
 import Network.HTTP
 import Network.URI
 import Prelude
+import System.Directory
 import System.FilePath
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
@@ -169,8 +170,25 @@ test3 =
       let g = parseAipTree c
       pure (getAipDocuments "/tmp/abc" g)
 
+test4 ::
+  AipDocuments ByteString
+  -> ExceptT ConnErrorHttp4xx IO ()
+test4 (AipDocuments ds) =
+  let doc (AipDocument r p) =
+        do  s <- doRequest r
+            liftIO . createDirectoryIfMissing True . takeDirectory $ p
+            liftIO . ByteString.writeFile p $ s
+  in  mapM_ doc ds
+
+test5 ::
+  ExceptT ConnErrorHttp4xx IO ()
+test5 =
+  do  c <- requestAipContents
+      let g = getAipDocuments "/tmp/abc" (parseAipTree c)
+      test4 g
+
 getAipDocuments ::
-  FilePath -- output directory
+  FilePath -- output directory 
   -> Ersas
   -> AipDocuments ByteString
 getAipDocuments dir (Ersas ersas) =
