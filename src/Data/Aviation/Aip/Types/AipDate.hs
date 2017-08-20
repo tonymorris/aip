@@ -42,4 +42,22 @@ instance HasMonth AipDate where
 instance HasYear AipDate where
   year =
     aipyear . year
+
+uriAipDate ::
+  AipDate
+  -> String
+uriAipDate (AipDate (Day d1 d2) m (Year y1 y2 y3 y4)) =
+  concat
+    [
+      show d1
+    , show d2
+    , "-"
+    , show m
+    , "-"
+    , show y1
+    , show y2
+    , show y3
+    , show y4
+    ]
+
     

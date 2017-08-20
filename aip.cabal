@@ -36,8 +36,8 @@ library
                     , parsec
                     , digit
                     , lens
-                    , download
                     , bytestring
+                    , filepath
                     
   ghc-options:
                     -Wall
