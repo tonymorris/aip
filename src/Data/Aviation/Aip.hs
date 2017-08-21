@@ -20,6 +20,7 @@ import Network.URI
 import Prelude
 import System.Directory
 import System.FilePath
+import System.IO
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.HTML.TagSoup.Tree.Util
@@ -157,35 +158,42 @@ newtype AipDocuments ty =
     [AipDocument ty]
   deriving Show
 
-test2 ::
-  ExceptT ConnErrorHttp4xx IO ()
-test2 = 
-  let g = aipRequestGet "current/aip/compslete.pdf" ""
-  in  doRequest g >>= liftIO . ByteString.writeFile "/tmp/h.pdf"
-
-test3 ::
-  ExceptT ConnErrorHttp4xx IO (AipDocuments ByteString)
-test3 =
-  do  c <- requestAipContents
-      let g = parseAipTree c
-      pure (getAipDocuments "/tmp/abc" g)
-
-test4 ::
-  AipDocuments ByteString
-  -> ExceptT ConnErrorHttp4xx IO ()
-test4 (AipDocuments ds) =
-  let doc (AipDocument r p) =
-        do  s <- doRequest r
-            liftIO . createDirectoryIfMissing True . takeDirectory $ p
-            liftIO . ByteString.writeFile p $ s
-  in  mapM_ doc ds
-
 test5 ::
   ExceptT ConnErrorHttp4xx IO ()
 test5 =
   do  c <- requestAipContents
-      let g = getAipDocuments "/tmp/abc" (parseAipTree c)
-      test4 g
+      let g = getAipDocuments "/tmp/abcd" (parseAipTree c)
+      liftIO (testdocs g)
+
+testdocs ::
+  AipDocuments ByteString
+  -> IO ()
+testdocs (AipDocuments ds) =
+  mapM_ testdoc ds
+
+testdoc ::
+  AipDocument ByteString
+  -> IO ()
+testdoc (AipDocument r p) =
+  do  z <- runExceptT (doRequest r)
+      case z of
+        Left e ->
+          let out (IsConnError ee) =
+                show ee
+              out (Http4xx x y) =
+                concat
+                  [
+                    "HTTP error 4"
+                  , show x
+                  , show y
+                  , "    "
+                  , show (rqURI r)
+                  ]
+          in  hPutStrLn stderr (out e)
+        Right s ->
+          do  createDirectoryIfMissing True . takeDirectory $ p
+              ByteString.writeFile p $ s
+              putStrLn ("created file " ++ p)
 
 getAipDocuments ::
   FilePath -- output directory 
