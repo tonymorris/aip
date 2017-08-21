@@ -162,7 +162,7 @@ test5 ::
   ExceptT ConnErrorHttp4xx IO [FilePath]
 test5 =
   do  c <- requestAipContents
-      let g = getAipDocuments "/tmp/accc" (parseAipTree c)
+      let g = getAipDocuments "/tmp/addd" (parseAipTree c)
       liftIO (testdocs stderr stdout g)
 
 testdocs ::
@@ -213,6 +213,7 @@ getAipDocuments dir (Ersas ersas) =
         , "aip/enroute.pdf"
         , "aip/aerodrome.pdf"
         , "aip/cover.pdf"
+        , "aip/index.pdf"
       --  AIP Charts (current)
         , "aipchart/erch/erch1.pdf"
         , "aipchart/erch/erch2.pdf"
