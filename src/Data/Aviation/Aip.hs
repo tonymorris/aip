@@ -159,28 +159,32 @@ newtype AipDocuments ty =
   deriving Show
 
 test5 ::
-  ExceptT ConnErrorHttp4xx IO ()
+  ExceptT ConnErrorHttp4xx IO [FilePath]
 test5 =
   do  c <- requestAipContents
-      let g = getAipDocuments "/tmp/abcd" (parseAipTree c)
-      liftIO (testdocs g)
+      let g = getAipDocuments "/tmp/accc" (parseAipTree c)
+      liftIO (testdocs stderr stdout g)
 
 testdocs ::
-  AipDocuments ByteString
-  -> IO ()
-testdocs (AipDocuments ds) =
-  mapM_ testdoc ds
+  Handle
+  -> Handle
+  -> AipDocuments ByteString
+  -> IO [FilePath]
+testdocs err out (AipDocuments ds) =
+  (>>= maybeToList) <$> mapM (testdoc err out) ds
 
 testdoc ::
-  AipDocument ByteString
-  -> IO ()
-testdoc (AipDocument r p) =
+  Handle
+  -> Handle
+  -> AipDocument ByteString
+  -> IO (Maybe FilePath)
+testdoc err out (AipDocument r p) =
   do  z <- runExceptT (doRequest r)
       case z of
         Left e ->
-          let out (IsConnError ee) =
+          let logmsg (IsConnError ee) =
                 show ee
-              out (Http4xx x y) =
+              logmsg (Http4xx x y) =
                 concat
                   [
                     "HTTP error 4"
@@ -189,11 +193,12 @@ testdoc (AipDocument r p) =
                   , "    "
                   , show (rqURI r)
                   ]
-          in  hPutStrLn stderr (out e)
+          in  Nothing <$ hPutStrLn err (logmsg e)
         Right s ->
           do  createDirectoryIfMissing True . takeDirectory $ p
               ByteString.writeFile p $ s
-              putStrLn ("created file " ++ p)
+              hPutStrLn out ("created file " ++ p)
+              pure (Just p)
 
 getAipDocuments ::
   FilePath -- output directory 
