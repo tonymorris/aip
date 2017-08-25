@@ -1,15 +1,14 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Data.Aviation.Aip.Types.AipPg where
+module Data.Aviation.Aip.AipPg where
 
-import Control.Applicative
-import Control.Lens
-import Data.Digit
-import Prelude
-import Text.Parser.Char
+import Data.Digit(Digit, parsedigit)
+import Text.Parser.Char(CharParsing, string)
+import Papa
 
 data AipPg =
   AipPg {
@@ -18,6 +17,8 @@ data AipPg =
   , _aippg2 ::
       Digit
   } deriving (Eq, Ord, Show)
+
+makeClassy ''AipPg
 
 parseAipPg ::
   (CharParsing p, Monad p) =>
@@ -31,5 +32,3 @@ parseAipPgHref ::
 parseAipPgHref =
   string "aip.asp?pg=" *> 
   parseAipPg
-
-makeClassy ''AipPg

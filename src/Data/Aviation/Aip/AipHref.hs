@@ -1,19 +1,24 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Data.Aviation.Aip.Types.AipHref where
+module Data.Aviation.Aip.AipHref(
+  AipHref(..)
+, parseAipHref
+, uriAipHref
+, HasAipHref(..)
+) where
 
-import Control.Lens
-import Data.Aviation.Aip.Types.AipDate
-import Data.Aviation.Aip.Types.AipPg
-import Data.Aviation.Aip.Types.Day
-import Data.Aviation.Aip.Types.Month
-import Data.Aviation.Aip.Types.Year
-import Data.Digit
-import Prelude
-import Text.Parser.Char
+import Data.Aviation.Aip.AipDate(AipDate, HasAipDate(aipDate), parseAipDate)
+import Data.Aviation.Aip.AipPg(AipPg, HasAipPg(aipPg), parseAipPg, aippg1, aippg2)
+import Data.Aviation.Aip.Day(HasDay(day, day1, day2))
+import Data.Aviation.Aip.Month(HasMonth(month))
+import Data.Aviation.Aip.Year(HasYear(year, year1, year2, year3, year4))
+import Data.Digit(Digit, HasDigit(hasdigit), parsedigit)
+import Text.Parser.Char(CharParsing, string)
+import Papa
 
 data AipHref =
   AipHref {
@@ -24,15 +29,15 @@ data AipHref =
   , _aiphrefversion ::
        Digit
   } deriving (Eq, Ord, Show)
-  
+
+makeClassy ''AipHref
+
 parseAipHref ::
   (CharParsing p, Monad p) =>
   p AipHref
 parseAipHref =
   string "aip.asp?pg=" *> 
   (AipHref <$> parseAipPg <* string "&vdate=" <*> parseAipDate <* string "&ver=" <*> parsedigit)
-
-makeClassy ''AipHref
 
 uriAipHref ::
   HasAipHref s =>

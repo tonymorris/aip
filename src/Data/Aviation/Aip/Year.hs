@@ -1,14 +1,18 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Data.Aviation.Aip.Types.Year where
+module Data.Aviation.Aip.Year(
+  Year(..)
+, parseYear
+, HasYear(..)
+) where
 
-import Control.Lens
-import Data.Digit
-import Prelude
-import Text.Parser.Char
+import Data.Digit(Digit, parsedigit)
+import Text.Parser.Char(CharParsing)
+import Papa
 
 data Year =
   Year {

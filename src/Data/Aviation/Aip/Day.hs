@@ -1,15 +1,18 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Data.Aviation.Aip.Types.Day where
+module Data.Aviation.Aip.Day(
+  Day(..)
+, parseDay
+, HasDay(..)
+) where
 
-import Control.Applicative
-import Control.Lens
-import Data.Digit
-import Prelude
-import Text.Parser.Char
+import Data.Digit(Digit, parsedigit)
+import Text.Parser.Char(CharParsing)
+import Papa
 
 data Day =
   Day {

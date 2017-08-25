@@ -1,11 +1,16 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Data.Aviation.Aip.Types.Month where
+module Data.Aviation.Aip.Month(
+  Month(..)
+, parseMonth
+, HasMonth(..)
+, AsMonth(..)
+) where
 
-import Control.Lens
-import Prelude
-import Text.Parser.Combinators
-import Text.Parser.Char
+import Text.Parser.Combinators(choice, try)
+import Text.Parser.Char(CharParsing, string)
+import Papa
 
 data Month =
   Jan
