@@ -158,47 +158,55 @@ newtype AipDocuments ty =
     [AipDocument ty]
   deriving Show
 
+main ::
+  IO ()
+main =
+  undefined
+  
 test5 ::
   ExceptT ConnErrorHttp4xx IO [FilePath]
 test5 =
-  do  c <- requestAipContents
-      let g = getAipDocuments "/tmp/addd" (parseAipTree c)
-      liftIO (testdocs stderr stdout g)
+  writeAipDocuments stderr stdout "/tmp/adddeeeee"
 
-testdocs ::
-  Handle
-  -> Handle
+writeAipDocuments ::
+    Handle -- ^ log error
+  -> Handle -- ^ log out
+  -> FilePath
+  -> ExceptT ConnErrorHttp4xx IO [FilePath]
+writeAipDocuments err out dir =
+  requestAipContents >>= liftIO . requestAipDocuments err out . getAipDocuments dir . parseAipTree
+
+requestAipDocuments ::
+  Handle -- ^ log error
+  -> Handle -- ^ log out
   -> AipDocuments ByteString
   -> IO [FilePath]
-testdocs err out (AipDocuments ds) =
-  (>>= maybeToList) <$> mapM (testdoc err out) ds
-
-testdoc ::
-  Handle
-  -> Handle
-  -> AipDocument ByteString
-  -> IO (Maybe FilePath)
-testdoc err out (AipDocument r p) =
-  do  z <- runExceptT (doRequest r)
-      case z of
-        Left e ->
-          let logmsg (IsConnError ee) =
-                show ee
-              logmsg (Http4xx x y) =
-                concat
-                  [
-                    "HTTP error 4"
-                  , show x
-                  , show y
-                  , "    "
-                  , show (rqURI r)
-                  ]
-          in  Nothing <$ hPutStrLn err (logmsg e)
-        Right s ->
-          do  createDirectoryIfMissing True . takeDirectory $ p
-              ByteString.writeFile p $ s
-              hPutStrLn out (concat ["uri ", show (rqURI r), "    created file ", p])
-              pure (Just p)
+requestAipDocuments err out (AipDocuments ds) =
+  let requestAipDocument ::
+        AipDocument ByteString
+        -> IO (Maybe FilePath)
+      requestAipDocument (AipDocument r p) =
+        do  z <- runExceptT (doRequest r)
+            case z of
+              Left e ->
+                let logmsg (IsConnError ee) =
+                      show ee
+                    logmsg (Http4xx x y) =
+                      concat
+                        [
+                          "HTTP error 4"
+                        , show x
+                        , show y
+                        , "    "
+                        , show (rqURI r)
+                        ]
+                in  Nothing <$ hPutStrLn err (logmsg e)
+              Right s ->
+                do  createDirectoryIfMissing True . takeDirectory $ p
+                    ByteString.writeFile p $ s
+                    hPutStrLn out (concat ["uri ", show (rqURI r), "    created file ", p])
+                    pure (Just p)
+  in  (>>= maybeToList) <$> mapM requestAipDocument ds
 
 getAipDocuments ::
   FilePath -- output directory 
